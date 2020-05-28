@@ -57,8 +57,16 @@ std::string stringBetween(std::string s, std::string start, std::string stop) {
 
 bool findString(std::string s, std::string findStr, int* pos)
 {
-	*pos = (int)s.find(findStr.c_str(), 0);
-	return std::string::npos != *pos;
+	bool b=false;
+	try {
+		int p = (int)s.find(findStr.c_str(), 0);
+		b = std::string::npos != p;
+	}
+	catch (std::exception e)
+	{
+		return b;
+	}
+	return b;
 }
 
 int parseRefMod(std::ifstream* sidFile, SID_Data* sid) {
@@ -111,64 +119,74 @@ int parseOrigin(std::ifstream* sidFile, SID_Data* sid) {
 	int pos = 0;
 	while (getline(*sidFile, line))
 	{
-		if (findString(line, "order", &pos))
-		{
-			sid->nodes[sid->currNodeIdx].orig.order = std::stoi(stringBetween(line, "=", "/n"));
+		try {
+			if (findString(line, "order", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.order = std::stoi(stringBetween(line, "=", "/n"));
+			}
+			else if (findString(line, "nrow", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.nrow = std::stoi(stringBetween(line, "=", "/n"));
+			}
+			else if (findString(line, "ncol", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.ncol = std::stoi(stringBetween(line, "=", "/n"));
+			}
+			else if (findString(line, "nq", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.nq = std::stoi(stringBetween(line, "=", "/n"));
+			}
+			else if (findString(line, "nqn", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.nqn = std::stoi(stringBetween(line, "=", "/n"));
+			}
+			else if (findString(line, "structure", &pos))
+			{
+				sid->nodes[sid->currNodeIdx].orig.structure = std::stoi(stringBetween(line, "=", "/n"));
+				//after structure, lets allocate the matrices
+				sid->nodes[sid->currNodeIdx].orig.M0 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+					sid->nodes[sid->currNodeIdx].orig.nrow, sizeof(double));
+				sid->nodes[sid->currNodeIdx].orig.M1 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+					sid->nodes[sid->currNodeIdx].orig.nrow *
+					sid->nodes[sid->currNodeIdx].orig.nq, sizeof(double));
+				sid->nodes[sid->currNodeIdx].orig.Mn = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+					sid->nodes[sid->currNodeIdx].orig.nrow *
+					sid->nodes[sid->currNodeIdx].orig.nqn, sizeof(double));
+			}
+			else if (findString(line, "m0", &pos))
+			{
+				int idxr = std::stoi(stringBetween(line, "(", ","));
+				int idxc = std::stoi(stringBetween(line, ",", ")"));
+				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+				setMatrix2D(val, sid->nodes[sid->currNodeIdx].orig.M0, idxr, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.ncol);
+			}
+			else if (findString(line, "m1", &pos))
+			{
+				std::string idxRs = stringBetween(line, "(", ",");
+				std::string idxNQs = stringBetween(line, ",", ",");
+				std::string idxCs = stringBetween(line, ",", ")");
+
+				int idxr = std::stoi(idxRs);
+				int idxnq = std::stoi(idxNQs);
+				int idxc = std::stoi(idxCs);
+				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+				setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.M1, idxr, idxnq, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nq, sid->nodes[sid->currNodeIdx].orig.ncol);
+			}
+			else if (findString(line, "mn", &pos))
+			{
+				int idxr = std::stoi(stringBetween(line, "(", ","));
+				int idxnqn = std::stoi(stringBetween(line, ",", ","));
+				int idxc = std::stoi(stringBetween(line, ",", ")"));
+				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+				setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.Mn, idxr, idxnqn, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nqn, sid->nodes[sid->currNodeIdx].orig.ncol);
+			}
+			else if (findString(line, "end origin", &pos)) {
+				return 0;
+			}
 		}
-		else if (findString(line, "nrow", &pos))
+		catch (std::exception e)
 		{
-			sid->nodes[sid->currNodeIdx].orig.nrow = std::stoi(stringBetween(line, "=", "/n"));
-		}
-		else if (findString(line, "ncol", &pos))
-		{
-			sid->nodes[sid->currNodeIdx].orig.ncol = std::stoi(stringBetween(line, "=", "/n"));
-		}
-		else if (findString(line, "nq", &pos))
-		{
-			sid->nodes[sid->currNodeIdx].orig.nq = std::stoi(stringBetween(line, "=", "/n"));
-		}
-		else if (findString(line, "nqn", &pos))
-		{
-			sid->nodes[sid->currNodeIdx].orig.nqn = std::stoi(stringBetween(line, "=", "/n"));
-		}
-		else if (findString(line, "structure", &pos))
-		{
-			sid->nodes[sid->currNodeIdx].orig.structure = std::stoi(stringBetween(line, "=", "/n"));
-			//after structure, lets allocate the matrices
-			sid->nodes[sid->currNodeIdx].orig.M0 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-																   sid->nodes[sid->currNodeIdx].orig.nrow, sizeof(double));
-			sid->nodes[sid->currNodeIdx].orig.M1 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-																   sid->nodes[sid->currNodeIdx].orig.nrow * 
-																   sid->nodes[sid->currNodeIdx].orig.nq, sizeof(double));
-			sid->nodes[sid->currNodeIdx].orig.Mn = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-																	sid->nodes[sid->currNodeIdx].orig.nrow *
-																	sid->nodes[sid->currNodeIdx].orig.nqn, sizeof(double));
-		}
-		else if (findString(line, "m0", & pos))
-		{
-			int idxr = std::stoi(stringBetween(line,"(",","));
-			int idxc = std::stoi(stringBetween(line, ",", ")"));
-			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix2D(val, sid->nodes[sid->currNodeIdx].orig.M0, idxr, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.ncol);
-		}
-		else if (findString(line, "m1", &pos))
-		{
-			int idxr = std::stoi(stringBetween(line, "(", ","));
-			int idxnq = std::stoi(stringBetween(line, ",", ","));
-			int idxc = std::stoi(stringBetween(line, ",", ")"));
-			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.M1, idxr,idxnq, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nq, sid->nodes[sid->currNodeIdx].orig.ncol);
-		}
-		else if (findString(line, "mn", &pos))
-		{
-			int idxr = std::stoi(stringBetween(line, "(", ","));
-			int idxnqn = std::stoi(stringBetween(line, ",", ","));
-			int idxc = std::stoi(stringBetween(line, ",", ")"));
-			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.Mn, idxr, idxnqn, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nqn, sid->nodes[sid->currNodeIdx].orig.ncol);
-		}
-		else if (findString(line, "end origin", &pos)) {
-			return 0;
+			std::cout << "exception" << std::endl;
 		}
 	}
 	return 0;
@@ -186,10 +204,19 @@ int parseNode(std::ifstream* sidFile, SID_Data* sid) {
 			str = stringBetween(line, "=", "/n");
 			memcpy(sid->nodes[sid->currNodeIdx].rFrame, str.c_str(), 8);
 		}
-		if (findString(line, "origin", &pos))
+		else if (findString(line, "origin", &pos))
 		{
 			parseOrigin(sidFile, sid);
 		}
+		else if (findString(line, "phi", &pos))
+		{
+		}
+		else if (findString(line, "psi", &pos))
+		{
+		}
+		else if (findString(line, "AP", &pos))
+		{
+		}	
 		else if (findString(line, "end node", &pos)) {
 			return 0;
 		}
@@ -207,7 +234,6 @@ int parseFrame(std::ifstream* sidFile, SID_Data* sid) {
 		if (findString(line, "new node", &pos)) {
 			sid->currNodeIdx++;
 			sid->nodes[sid->currNodeIdx].id = std::stoi(stringBetween(line,"=", "/n"));
-			printf("found new node #%d/n", sid->currNodeIdx);
 			parseNode(sidFile, sid);
 		}
 		else if (line.find("end frame")) {
@@ -229,7 +255,7 @@ int parseModal(std::ifstream* sidFile, SID_Data* sid) {
 		{
 			parseRefMod(sidFile, sid);
 		}
-		if (findString(line, "frame", &pos))
+		else if (findString(line, "frame", &pos))
 		{
 			parseFrame(sidFile, sid);
 		}
@@ -280,7 +306,6 @@ int main(int arg_count, char* arg_vec[]) {
 	if (sidFile.is_open())
 	{
 		getline(sidFile, line);
-		std::cout << "LINE: " << line << std::endl;
 		//first line holds information about number of nodes and number of modes
 		allocateSIDstructure(line, &sid);
 		//process the rest of the file;
