@@ -8,6 +8,13 @@
 
 static int lineNumber;
 
+
+void printOrigin(origin o) {
+	std::cout << "origin (order:" << o.order <<")"<< std::endl;
+	std::cout << "ncol:" << o.ncol << " nrow:" << o.nrow << " nqn:" << o.nq << " n_nqn" << o.nqn << std::endl;
+}
+
+
 int allocateSIDstructure(std::string line, SID_Data* sid)
 {
 	std::stringstream ss(line);
@@ -24,8 +31,6 @@ int allocateSIDstructure(std::string line, SID_Data* sid)
 			}
 		}
 	}
-	std::cout << "numNodes " << numNodeStr << std::endl;
-
 	sid->numNodes = std::stoi(numNodeStr);
 	sid->numModes = std::stoi(numModeStr);
 	sid->useGeoStiffness = useGeoStifffness;
@@ -55,13 +60,21 @@ std::string stringBetween(std::string s, std::string start, std::string stop) {
 	return s.substr(pos0+1, pos1 - pos0-1);
 }
 
+void getIndeces2(std::string s, int* i1, int* i2) {
+	int pos = s.find("(", 0);
+	std::string idxStr;
+	std::string subs = s.substr(pos + 1, 8);
+	std::stringstream ss(subs);
+	ss >> idxStr;
+	*i1 = std::stoi(idxStr);
+	ss >> idxStr;
+	*i2 = std::stoi(idxStr);
+}
+
 void getIndeces3(std::string s, int* i1, int* i2, int* i3){
 	int pos = s.find("(", 0);
-	std::cout << "get Indeces " << s << pos <<std::endl;
-
 	std::string idxStr;
 	std::string subs = s.substr(pos+1, 8);
-	std::cout << "subs " << subs << std::endl;
 	std::stringstream ss(subs);
 	ss >> idxStr;
 	*i1 = std::stoi(idxStr);
@@ -71,7 +84,7 @@ void getIndeces3(std::string s, int* i1, int* i2, int* i3){
 	*i3 = std::stoi(idxStr);
 }
 
-bool findString(std::string s, std::string findStr, int* pos)
+bool findString(std::string s, std::string findStr)
 {
 	bool b=false;
 	try {
@@ -91,16 +104,16 @@ int parseRefMod(std::ifstream* sidFile, SID_Data* sid) {
 	std::string str;
 	int pos = 0;
 	while (getline(*sidFile, line)) {
-		if (findString(line,"mass",&pos)){
+		if (findString(line,"mass")){
 			str = stringBetween(line, "=", "/n");
 			sid->modeStruct.mass = stringDouble_SID(str);
 		}
-		else if (findString(line, "nelastq", &pos)) {
+		else if (findString(line, "nelastq")) {
 			str = stringBetween(line, "=", "/n");
 			sid->modeStruct.nelastq = std::stoi(str);
 			sid->modeStruct.currModeIdx = 0;
 		}
-		else if (findString(line, "ielastq", &pos)) {
+		else if (findString(line, "ielastq")) {
 			int arrIdx = std::stoi(stringBetween(line, "(", ")"));
 			std::string modeIdx = stringBetween(line, "=", ":");
 			double freq = std::stod(stringBetween(line, ":", "Hz"));
@@ -119,13 +132,13 @@ int parseRefMod(std::ifstream* sidFile, SID_Data* sid) {
 
 void setMatrix2D(double value, double* mat, int r, int c, int numR, int numC)
 {
-	mat[(r - 1) * numC + c] = value;
+	mat[(r - 1) * numC + c-1] = value;
 }
 
 void setMatrix3D(double value, double* mat, int r, int nq, int c, int numR, int numNQ, int numC)
 {
 	//traverse the rows, than the qn dim than the cols
-	mat[(r - 1) * numC * numNQ + (nq-1)*numC + c] = value;
+	mat[(r - 1) * numC * numNQ + (nq-1)*numC + c-1] = value;
 }
 
 int parseOrigin(std::ifstream* sidFile, SID_Data* sid) {
@@ -135,78 +148,66 @@ int parseOrigin(std::ifstream* sidFile, SID_Data* sid) {
 	int pos = 0;
 	while (getline(*sidFile, line))
 	{
-		try {
-			if (findString(line, "order", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.order = std::stoi(stringBetween(line, "=", "/n"));
-			}
-			else if (findString(line, "nrow", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.nrow = std::stoi(stringBetween(line, "=", "/n"));
-			}
-			else if (findString(line, "ncol", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.ncol = std::stoi(stringBetween(line, "=", "/n"));
-			}
-			else if (findString(line, "nq", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.nq = std::stoi(stringBetween(line, "=", "/n"));
-			}
-			else if (findString(line, "nqn", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.nqn = std::stoi(stringBetween(line, "=", "/n"));
-			}
-			else if (findString(line, "structure", &pos))
-			{
-				sid->nodes[sid->currNodeIdx].orig.structure = std::stoi(stringBetween(line, "=", "/n"));
-				//after structure, lets allocate the matrices
-				sid->nodes[sid->currNodeIdx].orig.M0 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-					sid->nodes[sid->currNodeIdx].orig.nrow, sizeof(double));
-				sid->nodes[sid->currNodeIdx].orig.M1 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-					sid->nodes[sid->currNodeIdx].orig.nrow *
-					sid->nodes[sid->currNodeIdx].orig.nq, sizeof(double));
-				sid->nodes[sid->currNodeIdx].orig.Mn = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
-					sid->nodes[sid->currNodeIdx].orig.nrow *
-					sid->nodes[sid->currNodeIdx].orig.nqn, sizeof(double));
-			}
-			else if (findString(line, "m0", &pos))
-			{
-				int idxr = std::stoi(stringBetween(line, "(", ","));
-				int idxc = std::stoi(stringBetween(line, ",", ")"));
-				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-				setMatrix2D(val, sid->nodes[sid->currNodeIdx].orig.M0, idxr, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.ncol);
-			}
-			else if (findString(line, "m1", &pos))
-			{
-				std::string idxRs = stringBetween(line, "(", ",");
-				std::string idxNQs = stringBetween(line, ",", ",");
-				std::string idxCs = stringBetween(line, ",", ")");
-				int idxr = 0;
-				int idxnq = 0;
-				int idxc = 0;
-				//int idxr = std::stoi(idxRs);
-				//int idxnq = std::stoi(idxNQs);
-				//int idxc = std::stoi(idxCs);
-				getIndeces3(line, &idxr, &idxnq, &idxc);
-
-				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-				setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.M1, idxr, idxnq, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nq, sid->nodes[sid->currNodeIdx].orig.ncol);
-			}
-			else if (findString(line, "mn", &pos))
-			{
-				int idxr = std::stoi(stringBetween(line, "(", ","));
-				int idxnqn = std::stoi(stringBetween(line, ",", ","));
-				int idxc = std::stoi(stringBetween(line, ",", ")"));
-				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-				setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.Mn, idxr, idxnqn, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nqn, sid->nodes[sid->currNodeIdx].orig.ncol);
-			}
-			else if (findString(line, "end origin", &pos)) {
-				return 0;
-			}
-		}
-		catch (std::exception e)
+		if (findString(line, "order"))
 		{
-			std::cout << "exception" << std::endl;
+			sid->nodes[sid->currNodeIdx].orig.order = std::stoi(stringBetween(line, "=", "/n"));
+		}
+		else if (findString(line, "nrow"))
+		{
+			sid->nodes[sid->currNodeIdx].orig.nrow = std::stoi(stringBetween(line, "=", "/n"));
+		}
+		else if (findString(line, "ncol"))
+		{
+			sid->nodes[sid->currNodeIdx].orig.ncol = std::stoi(stringBetween(line, "=", "/n"));
+		}
+		else if (findString(line, "nq "))//Attention, the space seperates the token from nqn
+		{
+			sid->nodes[sid->currNodeIdx].orig.nq = std::stoi(stringBetween(line, "=", "/n"));
+		}
+		else if (findString(line, "nqn "))
+		{
+			sid->nodes[sid->currNodeIdx].orig.nqn = std::stoi(stringBetween(line, "=", "/n"));
+		}
+		else if (findString(line, "structure"))
+		{
+			sid->nodes[sid->currNodeIdx].orig.structure = std::stoi(stringBetween(line, "=", "/n"));
+			//after structure, lets allocate the matrices
+			sid->nodes[sid->currNodeIdx].orig.M0 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+				sid->nodes[sid->currNodeIdx].orig.nrow, sizeof(double));
+			sid->nodes[sid->currNodeIdx].orig.M1 = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+				sid->nodes[sid->currNodeIdx].orig.nrow *
+				sid->nodes[sid->currNodeIdx].orig.nq, sizeof(double));
+			sid->nodes[sid->currNodeIdx].orig.Mn = (double*)calloc(sid->nodes[sid->currNodeIdx].orig.ncol *
+				sid->nodes[sid->currNodeIdx].orig.nrow *
+				sid->nodes[sid->currNodeIdx].orig.nqn, sizeof(double));
+		}
+		else if (findString(line, "m0"))
+		{
+			int idxr=0;
+			int idxc=0;
+			getIndeces2(line, &idxr, &idxc);
+			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+			setMatrix2D(val, sid->nodes[sid->currNodeIdx].orig.M0, idxr, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.ncol);
+		}
+		else if (findString(line, "m1"))
+		{
+			int idxr = 0;
+			int idxnq = 0;
+			int idxc = 0;
+			getIndeces3(line, &idxr, &idxnq, &idxc);
+			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+			setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.M1, idxr, idxnq, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nq, sid->nodes[sid->currNodeIdx].orig.ncol);
+		}
+		else if (findString(line, "mn"))
+		{
+			int idxr = std::stoi(stringBetween(line, "(", ","));
+			int idxnqn = std::stoi(stringBetween(line, ",", ","));
+			int idxc = std::stoi(stringBetween(line, ",", ")"));
+			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
+			setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.Mn, idxr, idxnqn, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nqn, sid->nodes[sid->currNodeIdx].orig.ncol);
+		}
+		else if (findString(line, "end origin")) {
+			return 0;
 		}
 	}
 	return 0;
@@ -219,25 +220,25 @@ int parseNode(std::ifstream* sidFile, SID_Data* sid) {
 	int pos = 0;
 	while (getline(*sidFile, line))
 	{
-		if (findString(line, "rframe", &pos))
+		if (findString(line, "rframe"))
 		{
 			str = stringBetween(line, "=", "/n");
 			memcpy(sid->nodes[sid->currNodeIdx].rFrame, str.c_str(), 8);
 		}
-		else if (findString(line, "origin", &pos))
+		else if (findString(line, "origin"))
 		{
 			parseOrigin(sidFile, sid);
 		}
-		else if (findString(line, "phi", &pos))
+		else if (findString(line, "phi"))
 		{
 		}
-		else if (findString(line, "psi", &pos))
+		else if (findString(line, "psi"))
 		{
 		}
-		else if (findString(line, "AP", &pos))
+		else if (findString(line, "AP"))
 		{
 		}	
-		else if (findString(line, "end node", &pos)) {
+		else if (findString(line, "end node")) {
 			return 0;
 		}
 	}
@@ -251,7 +252,7 @@ int parseFrame(std::ifstream* sidFile, SID_Data* sid) {
 	std::string str;
 	int pos = 0;
 	while (getline(*sidFile, line)) {
-		if (findString(line, "new node", &pos)) {
+		if (findString(line, "new node")) {
 			sid->currNodeIdx++;
 			sid->nodes[sid->currNodeIdx].id = std::stoi(stringBetween(line,"=", "/n"));
 			parseNode(sidFile, sid);
@@ -271,15 +272,15 @@ int parseModal(std::ifstream* sidFile, SID_Data* sid) {
 	int pos = 0;
 	while (getline(*sidFile, line)) 
 	{
-		if (findString(line, "refmod", &pos))
+		if (findString(line, "refmod"))
 		{
 			parseRefMod(sidFile, sid);
 		}
-		else if (findString(line, "frame", &pos))
+		else if (findString(line, "frame"))
 		{
 			parseFrame(sidFile, sid);
 		}
-		else if (findString(line,"end modal",&pos)) {
+		else if (findString(line,"end modal")) {
 			return 0;
 		}
 	}
@@ -292,11 +293,11 @@ int parsePart(std::ifstream* sidFile, SID_Data* sid) {
 	std::string str;
 	int pos = 0;
 	while (getline(*sidFile, line)) {
-		if (findString(line, "new modal", &pos))
+		if (findString(line, "new modal"))
 		{
 			parseModal(sidFile, sid);
 		}
-		else if(findString(line, "end part", &pos))	{
+		else if(findString(line, "end part"))	{
 			return 0;
 		}
 	}
@@ -309,10 +310,11 @@ int processLine(std::ifstream* sidFile, SID_Data* sid) {
 	std::string str;
 	int pos = 0;
 	while (getline(*sidFile, line)) {
-		if (findString(line, "part", &pos))
+		if (findString(line, "part"))
 		{
 			parsePart(sidFile, sid);
 		}
+
 	}
 	return 0;
 }
