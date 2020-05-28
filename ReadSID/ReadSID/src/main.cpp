@@ -55,6 +55,22 @@ std::string stringBetween(std::string s, std::string start, std::string stop) {
 	return s.substr(pos0+1, pos1 - pos0-1);
 }
 
+void getIndeces3(std::string s, int* i1, int* i2, int* i3){
+	int pos = s.find("(", 0);
+	std::cout << "get Indeces " << s << pos <<std::endl;
+
+	std::string idxStr;
+	std::string subs = s.substr(pos+1, 8);
+	std::cout << "subs " << subs << std::endl;
+	std::stringstream ss(subs);
+	ss >> idxStr;
+	*i1 = std::stoi(idxStr);
+	ss >> idxStr;
+	*i2 = std::stoi(idxStr);
+	ss >> idxStr;
+	*i3 = std::stoi(idxStr);
+}
+
 bool findString(std::string s, std::string findStr, int* pos)
 {
 	bool b=false;
@@ -165,10 +181,14 @@ int parseOrigin(std::ifstream* sidFile, SID_Data* sid) {
 				std::string idxRs = stringBetween(line, "(", ",");
 				std::string idxNQs = stringBetween(line, ",", ",");
 				std::string idxCs = stringBetween(line, ",", ")");
+				int idxr = 0;
+				int idxnq = 0;
+				int idxc = 0;
+				//int idxr = std::stoi(idxRs);
+				//int idxnq = std::stoi(idxNQs);
+				//int idxc = std::stoi(idxCs);
+				getIndeces3(line, &idxr, &idxnq, &idxc);
 
-				int idxr = std::stoi(idxRs);
-				int idxnq = std::stoi(idxNQs);
-				int idxc = std::stoi(idxCs);
 				double val = stringDouble_SID(stringBetween(line, "=", "/n"));
 				setMatrix3D(val, sid->nodes[sid->currNodeIdx].orig.M1, idxr, idxnq, idxc, sid->nodes[sid->currNodeIdx].orig.nrow, sid->nodes[sid->currNodeIdx].orig.nq, sid->nodes[sid->currNodeIdx].orig.ncol);
 			}
