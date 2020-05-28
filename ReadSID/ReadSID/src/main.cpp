@@ -4,7 +4,7 @@
 #include <sstream>
 #include <math.h>
 #include <algorithm>
-#include "include/SIDtypes.h"
+#include "../include/SIDtypes.h"
 
 static int lineNumber;
 
@@ -207,7 +207,7 @@ int parseFrame(std::ifstream* sidFile, SID_Data* sid) {
 		if (findString(line, "new node", &pos)) {
 			sid->currNodeIdx++;
 			sid->nodes[sid->currNodeIdx].id = std::stoi(stringBetween(line,"=", "/n"));
-			printf("found new node #%d\n", sid->currNodeIdx);
+			printf("found new node #%d/n", sid->currNodeIdx);
 			parseNode(sidFile, sid);
 		}
 		else if (line.find("end frame")) {
@@ -273,7 +273,7 @@ int processLine(std::ifstream* sidFile, SID_Data* sid) {
 
 int main(int arg_count, char* arg_vec[]) {
 	std::string line;
-	std::ifstream sidFile("D:/Projekte/ModelicaLibraries/EMBS_ModelicaLib/SID/cartopPragV32.SID_FEM");
+	std::ifstream sidFile("C:/Program Files/Dymola 2020x/Modelica/Library/FlexibleBodies 2.3.0/Resources/Data/cartopPragV32.SID_FEM");
 
 	lineNumber = 1;
 	SID_Data sid;
