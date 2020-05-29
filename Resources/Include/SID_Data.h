@@ -129,7 +129,7 @@ double getOriginM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int d
 	extObjSID* extObj = (extObjSID*)p_eo;
 	double* dp =  extObj->sid->nodes[nodeIdx-1].orig.M1;
 	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
-	return extObj->sid->nodes[nodeIdx].orig.M1[i];
+	return extObj->sid->nodes[nodeIdx-1].orig.M1[i];
 }
 
 
