@@ -25,13 +25,16 @@ typedef struct
 	double* M0;// zero order matrix, nrow X ncol
 	double* M1;// first order matrix, nrow X nq X ncol
 	double* Mn;// higher order matrix
-} origin; // = class taylor
+} taylor; // = class taylor
 
 typedef struct
 {
 	int id;
 	char rFrame[8];
-	origin orig;
+	taylor orig;
+	taylor phi;
+	taylor psi;
+	taylor AP;
 } node;
 
 typedef struct {
@@ -40,6 +43,17 @@ typedef struct {
 	bool useGeoStiffness;
 	refmod modeStruct;
 	node* nodes;
+	taylor mdCM;
+	taylor J;
+	taylor Ct;
+	taylor Cr;
+	taylor Me;
+	taylor Gr;		
+	taylor Ge;
+	taylor Oe;
+	taylor ksigma;
+	taylor Ke;
+	taylor De;
 	int currNodeIdx;
 } SID_Data;
 
