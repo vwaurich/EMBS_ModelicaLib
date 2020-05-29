@@ -1,8 +1,8 @@
 
 #ifdef EXPORTLIB
-   #define CLASS_DECLSPEC    __declspec(dllexport)
+   #define LIB_API extern "C" __declspec(dllexport)
 #else
-   #define CLASS_DECLSPEC    __declspec(dllimport)
+   #define LIB_API  __declspec(dllimport)
 #endif
 
 typedef struct
@@ -64,5 +64,7 @@ typedef struct {
 } SID_Data;
 
 
-CLASS_DECLSPEC void* SIDFileConstructor(char* fileName);
-CLASS_DECLSPEC int SIDFile_getNumberOfNodes(void* sid);
+	LIB_API void* SIDFileConstructor(char* fileName);
+	LIB_API int SIDFile_getNumberOfNodes(SID_Data* sid);
+	LIB_API int SIDFile_getNumberOfModes(SID_Data* sid);
+

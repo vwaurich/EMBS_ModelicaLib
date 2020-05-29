@@ -401,7 +401,7 @@ int processLine(std::ifstream* sidFile, SID_Data* sid) {
 	return 0;
 }
 
-CLASS_DECLSPEC void* SIDFileConstructor(char* fileName)
+void* SIDFileConstructor(char* fileName)
 {
 	std::string line;
 	std::ifstream sidFile(fileName);
@@ -420,9 +420,15 @@ CLASS_DECLSPEC void* SIDFileConstructor(char* fileName)
 	return (void*)&sid;
 }
 
-CLASS_DECLSPEC int SIDFile_getNumberOfNodes(SID_Data * sid)
+int SIDFile_getNumberOfNodes(SID_Data * sid)
 {
-	return 8;
+	return sid->numNodes;
 }
+
+int SIDFile_getNumberOfModes(SID_Data * sid)
+{
+	return sid->numModes;
+}
+
 
 
