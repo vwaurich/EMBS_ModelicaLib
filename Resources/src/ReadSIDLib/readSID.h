@@ -5,6 +5,7 @@
    #define LIB_API  __declspec(dllimport)
 #endif
 
+
 typedef struct
 {
 	char ielastq[20]; //name of the mode shape
@@ -71,10 +72,8 @@ extern "C"
 #endif
 
 	LIB_API void* SIDFileConstructor(char* fileName);
-	LIB_API int SIDFile_getNumberOfNodes(SID_Data* sid);
-	LIB_API int SIDFile_getNumberOfModes(SID_Data* sid);
-	LIB_API void SIDFile_getM0ForNode(SID_Data * sid, int nodeIdx, double* m0);
-
+	LIB_API int getM3Idx(int r, int q, int c, int dimR, int dimQ, int dimC);//zero based
+	LIB_API int getM2Idx(int r, int c, int dimR, int dimC);//zero based
 
 #ifdef __cplusplus
 }

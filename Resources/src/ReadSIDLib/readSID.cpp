@@ -6,20 +6,30 @@
 #include <algorithm>
 #include "readSID.h"
 
+int getM2Idx(int r, int c, int dimR, int dimC) {
+	return c + r * dimC;
+}
+
+int getM3Idx(int r, int q, int c, int dimR, int dimQ, int dimC) {
+	return c + r * dimC + q * dimC*dimR;
+}
+
+
 void printM_2(double* M, int dimRow, int dimCol) {
 	for (int r = 0; r < dimRow; r++) {
 		for (int c = 0; c < dimCol; c++) {
-			std::cout << M[c + r * dimCol] << " \t ";
+			std::cout << M[getM2Idx(r,c,dimRow,dimCol)] << " \t ";
 		}
 		std::cout << std::endl;
 	}
 }
 
+
 void printM_3(double* M, int dimRow, int dimNQ, int dimCol) {
 	for (int r = 0; r < dimRow; r++) {
 		for (int c = 0; c < dimCol; c++) {
 			for (int nq = 0; nq < dimNQ; nq++) {
-				std::cout << "M[" << r+1 << ", " << nq+1 << ", " << c+1 << "] = " << M[c+r*dimCol+nq*dimCol*dimRow] << std::endl;
+				std::cout << "M[" << r+1 << ", " << nq+1 << ", " << c+1 << "] = " << M[getM3Idx(r,nq,c,dimRow,dimNQ,dimCol)] << std::endl;
 			}
 		}
 	}
@@ -165,15 +175,16 @@ int parseRefMod(std::ifstream* sidFile, SID_Data* sid) {
 	return 0;
 }
 
+
 void setMatrix2D(double value, double* mat, int r, int c, int numR, int numC)
 {
-	mat[(r - 1) * numC + c-1] = value;
+	mat[getM2Idx(r,c,numR,numC)] = value;
 }
 
 void setMatrix3D(double value, double* mat, int r, int nq, int c, int numR, int numNQ, int numC)
 {
 	//traverse the cols,rows and q
-	mat[(nq - 1) * numC * numR + (r-1)*numC + c-1] = value;
+	mat[getM3Idx(r,nq,c,numR,numNQ,numC)] = value;
 }
 
 int parseTaylor(std::ifstream* sidFile, taylor* tayl) {
@@ -222,7 +233,7 @@ int parseTaylor(std::ifstream* sidFile, taylor* tayl) {
 			int idxc=0;
 			getIndeces2(line, &idxr, &idxc);
 			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix2D(val, tayl->M0, idxr, idxc, tayl->nrow, tayl->ncol);
+			setMatrix2D(val, tayl->M0, idxr-1, idxc-1, tayl->nrow, tayl->ncol);
 		}
 		else if (findString(line, "m1"))
 		{
@@ -231,7 +242,7 @@ int parseTaylor(std::ifstream* sidFile, taylor* tayl) {
 			int idxc = 0;
 			getIndeces3(line, &idxr, &idxnq, &idxc);
 			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix3D(val, tayl->M1, idxr, idxnq, idxc, tayl->nrow, tayl->nq, tayl->ncol);
+			setMatrix3D(val, tayl->M1, idxr-1, idxnq-1, idxc-1, tayl->nrow, tayl->nq, tayl->ncol);
 		}
 		else if (findString(line, "mn"))
 		{
@@ -239,7 +250,7 @@ int parseTaylor(std::ifstream* sidFile, taylor* tayl) {
 			int idxnqn = std::stoi(stringBetween(line, ",", ","));
 			int idxc = std::stoi(stringBetween(line, ",", ")"));
 			double val = stringDouble_SID(stringBetween(line, "=", "/n"));
-			setMatrix3D(val, tayl->Mn, idxr, idxnqn, idxc, tayl->nrow, tayl->nqn, tayl->ncol);
+			setMatrix3D(val, tayl->Mn, idxr-1, idxnqn-1, idxc-1, tayl->nrow, tayl->nqn, tayl->ncol);
 		}
 		else if (findString(line, "end")) {
 			return 0;
@@ -419,23 +430,3 @@ void* SIDFileConstructor(char* fileName)
 	else { std::cout << "Unable to open file"<<std::endl; }
 	return (void*)&sid;
 }
-
-int SIDFile_getNumberOfNodes(SID_Data * sid)
-{
-	return sid->numNodes;
-}
-
-int SIDFile_getNumberOfModes(SID_Data * sid)
-{
-	return sid->numModes;
-}
-
-void SIDFile_getM0ForNode(SID_Data * sid, int nodeIdx, double* m0)
-{
-	double d = 0;
-
-	m0[0] = 123;
-}
-
-
-
