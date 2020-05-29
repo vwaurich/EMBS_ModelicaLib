@@ -7,7 +7,7 @@ file(GLOB HEADER "*.h")
 
 add_definitions(-DEXPORTLIB)
 
-add_library(readSIDlib STATIC
+add_library(readSIDlib SHARED
     ${SOURCES}
 	${HEADER}
 )

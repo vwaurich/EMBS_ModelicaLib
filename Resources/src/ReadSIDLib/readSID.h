@@ -1,6 +1,6 @@
 
 #ifdef EXPORTLIB
-   #define LIB_API extern "C" __declspec(dllexport)
+   #define LIB_API __declspec(dllexport)
 #else
    #define LIB_API  __declspec(dllimport)
 #endif
@@ -64,7 +64,20 @@ typedef struct {
 } SID_Data;
 
 
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 	LIB_API void* SIDFileConstructor(char* fileName);
 	LIB_API int SIDFile_getNumberOfNodes(SID_Data* sid);
 	LIB_API int SIDFile_getNumberOfModes(SID_Data* sid);
+	LIB_API void SIDFile_getM0ForNode(SID_Data * sid, int nodeIdx, double* m0);
+
+
+#ifdef __cplusplus
+}
+#endif
+
 

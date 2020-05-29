@@ -430,5 +430,12 @@ int SIDFile_getNumberOfModes(SID_Data * sid)
 	return sid->numModes;
 }
 
+void SIDFile_getM0ForNode(SID_Data * sid, int nodeIdx, double* m0)
+{
+	double d = 0;
+
+	m0[0] = 123;
+}
+
 
 

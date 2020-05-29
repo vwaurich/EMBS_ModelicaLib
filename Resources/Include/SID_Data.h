@@ -3,17 +3,17 @@
 
 
 #include "../src/ReadSIDLib/readSID.h"
+#include "ModelicaUtilities.h"
+
 
 typedef struct{
-  int i1;
-  int i2;
-  SID_Data sid;
+  SID_Data* sid;
 } extObjSID;
 
-void* SID_Constructor(const char* fileName){
+void* SID_Constructor(char* fileName){
 	extObjSID* sid = (extObjSID*)malloc(sizeof(extObjSID));
-	sid->i1 = 10;
-	sid->i2 = 2;
+	ModelicaFormatMessage("SID_Data.h: Create SID object of file %s \n",fileName);
+	sid->sid = SIDFileConstructor(fileName);
 	return (void *)sid;
 }
 
@@ -24,7 +24,20 @@ void SID_Destructor(void* p_eo){
 	
 	
 int getNumberOfNodes(void* p_eo){
-	return 8;
+	extObjSID* sid = (extObjSID*)p_eo;
+	int i = SIDFile_getNumberOfNodes(sid->sid);
+	return i;
+}
+
+int getNumberOfModes(void* p_eo){
+	extObjSID* sid = (extObjSID*)p_eo;
+	int i = SIDFile_getNumberOfModes(sid->sid);
+	return i;
+}
+
+void getM0ArrforNode(void* p_eo, int nodeIdx, double* m0){
+	extObjSID* sid = (extObjSID*)p_eo;
+	SIDFile_getM0ForNode(sid->sid, nodeIdx, m0);
 }
 
 #endif
