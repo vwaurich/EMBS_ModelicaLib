@@ -85,7 +85,10 @@ int getNumberOfModes(void* p_eo){
 
 
 //Taylor Retrieval
+//=================================
 
+//origin-taylor
+//=================================
 int getOriginOrder(void* p_eo, int nodeIdx){
 	extObjSID* extObj = (extObjSID*)p_eo;
 	return extObj->sid->nodes[nodeIdx-1].orig.order;
@@ -130,6 +133,149 @@ double getOriginM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int d
 	double* dp =  extObj->sid->nodes[nodeIdx-1].orig.M1;
 	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
 	return extObj->sid->nodes[nodeIdx-1].orig.M1[i];
+}
+
+//phi-taylor
+//=================================
+int getPhiOrder(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.order;
+}
+	
+int getPhiNRows(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.nrow;
+}
+	
+int getPhiNCols(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.ncol;
+}
+
+int getPhiNq(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.nq;
+}
+
+int getPhiNqn(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.nqn;
+}
+
+int getPhiStructure(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].phi.structure;
+}
+	
+double getPhiM0(void* p_eo, int nodeIdx, int r, int c, int dimR, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].phi.M0;
+	int i = (c-1) + (r-1) * dimC;
+	return extObj->sid->nodes[nodeIdx-1].phi.M0[i];
+}
+
+double getPhiM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int dimQ, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].phi.M1;
+	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
+	return extObj->sid->nodes[nodeIdx-1].phi.M1[i];
+}
+
+//psi-taylor
+//=================================
+int getPsiOrder(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.order;
+}
+	
+int getPsiNRows(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.nrow;
+}
+	
+int getPsiNCols(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.ncol;
+}
+
+int getPsiNq(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.nq;
+}
+
+int getPsiNqn(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.nqn;
+}
+
+int getPsiStructure(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].psi.structure;
+}
+	
+double getPsiM0(void* p_eo, int nodeIdx, int r, int c, int dimR, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].psi.M0;
+	int i = (c-1) + (r-1) * dimC;
+	return extObj->sid->nodes[nodeIdx-1].psi.M0[i];
+}
+
+double getPsiM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int dimQ, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].psi.M1;
+	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
+	return extObj->sid->nodes[nodeIdx-1].psi.M1[i];
+}
+
+
+//AP-taylor
+//=================================
+int getAPOrder(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.order;
+}
+	
+int getAPNRows(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.nrow;
+}
+	
+int getAPNCols(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.ncol;
+}
+
+int getAPNq(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.nq;
+}
+
+int getAPNqn(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.nqn;
+}
+
+int getAPStructure(void* p_eo, int nodeIdx){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->nodes[nodeIdx-1].AP.structure;
+}
+	
+double getAPM0(void* p_eo, int nodeIdx, int r, int c, int dimR, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].AP.M0;
+	int i = (c-1) + (r-1) * dimC;
+	return extObj->sid->nodes[nodeIdx-1].AP.M0[i];
+}
+
+double getAPM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int dimQ, int dimC){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	double* dp =  extObj->sid->nodes[nodeIdx-1].AP.M1;
+	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
+	ModelicaFormatMessage("node %d %f %f %f %f %f %f %f %f %f\n",nodeIdx, dp[0],dp[1],dp[2],dp[4],dp[5],dp[6],dp[7],dp[8]);
+	ModelicaFormatMessage("r %d q %d c %d dimR %d dimQ %d dimC %d Idx %d\n",r,q,c,dimR,dimQ,dimC, i);
+
+	
+	return extObj->sid->nodes[nodeIdx-1].AP.M1[i];
 }
 
 
