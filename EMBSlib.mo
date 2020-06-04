@@ -726,6 +726,7 @@ package EMBSlib
     record SID_DataStructure
       Integer numNodes;
       Integer numModes;
+      //Taylortest[numNodes] nodes;
       Taylortest J;
       annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(coordinateSystem(preserveAspectRatio=false)));
     end SID_DataStructure;
@@ -905,7 +906,7 @@ package EMBSlib
 
       parameter String fileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
       parameter EMBSlib.Types.SID_DataStructure sid = EMBSlib.SID.ParserFunctions.getSID_DataStructure(fileName) annotation(Evaluate=true);
-
+      parameter EMBSlib.Types.Taylortest[sid.numNodes] nodes = EMBSlib.SID.ParserFunctions.getNodes(sid.numNodes)  annotation(Evaluate=true);
       annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
             coordinateSystem(preserveAspectRatio=false)));
     end SID_File;
@@ -964,6 +965,8 @@ package EMBSlib
          struc.J.ncol:=struc.numNodes;
          struc.J.M0 := EMBSlib.SID.ParserFunctions.getTaylor(struc.J.nrow,struc.J.ncol);
 
+         //struc.nodes :=EMBSlib.SID.ParserFunctions.getNodes(3);
+
          while not found and not endOfFile loop
           (token, nextIndex) := Modelica.Utilities.Strings.scanToken(line);
           found := true;
@@ -988,6 +991,17 @@ package EMBSlib
       algorithm
         i:=3;
       end testF;
+
+      function getNodes
+        input Integer size;
+        output EMBSlib.Types.Taylortest[size] node;
+      algorithm
+        for i in 1:size loop
+          node[i].nrow := 2;
+          node[i].ncol := 2;
+          node[i].M0 := EMBSlib.SID.ParserFunctions.getTaylor(2,2);
+        end for;
+      end getNodes;
     end ParserFunctions;
   end SID;
   annotation (uses(Modelica(version="3.2.3")));
