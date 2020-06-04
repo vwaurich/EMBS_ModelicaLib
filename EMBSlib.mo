@@ -726,6 +726,7 @@ package EMBSlib
     record SID_DataStructure
       Integer numNodes;
       Integer numModes;
+      Modal modal;
       //Taylortest[numNodes] nodes;
       Taylortest J;
       annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(coordinateSystem(preserveAspectRatio=false)));
@@ -737,6 +738,15 @@ package EMBSlib
       Real[nrow,ncol] M0; //nrows,ncol
       //Real[nrow,nq,ncol] M1; //rows,q,cols
     end Taylortest;
+
+    record Modal
+      Real mass;
+      Integer nelastq;
+      Real[nelastq] freq;
+
+      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+            coordinateSystem(preserveAspectRatio=false)));
+    end Modal;
   end Types;
 
   package Functions
@@ -941,38 +951,112 @@ package EMBSlib
 
       end getNextInteger;
 
+      function getRealValue "searches for the first real value after an equation mark. values can have the format x.xxxD+yy"
+        input String line;
+        input Integer startIdx;
+        input String delimiter = "";
+        output Boolean found = false;
+        output Real value = 0.0;
+      protected
+        Modelica.Utilities.Types.TokenValue token;
+        Integer length = Modelica.Utilities.Strings.length(line);
+        Integer nextIdx = startIdx;
+      algorithm
+         Modelica.Utilities.Streams.print("LINE "+line);
+         while
+              (not found) loop
+           (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+            //Modelica.Utilities.Streams.print("Token "+String(token.tokenType));
+           if (token.tokenType == Modelica.Utilities.Types.TokenType.DelimiterToken) and token.string==delimiter then
+             //Modelica.Utilities.Streams.print("Delimiter Token "+token.string);
+             (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+             if (token.tokenType == Modelica.Utilities.Types.TokenType.RealToken) then
+               //Modelica.Utilities.Streams.print("Got Real Token "+String(token.real));
+               value := token.real;
+               found := true;
+               (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+               //Modelica.Utilities.Streams.print("Next Token "+String(token.tokenType)+" : "+token.string);
+               if (token.tokenType == Modelica.Utilities.Types.TokenType.IdentifierToken) and token.string=="D" then
+                 (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+                  //Modelica.Utilities.Streams.print("Next Next Token "+String(token.tokenType)+" : "+String(token.integer));
+                 if
+                   (token.tokenType == Modelica.Utilities.Types.TokenType.IntegerToken) then
+                   value := value*10^token.integer;
+                 end if;
+               end if;
+             end if;
+           end if;
+           if
+             (nextIdx>=length) then
+             break;
+           end if;
+         end while;
+
+      end getRealValue;
+
+      function getIntegerValue
+        "searches for the first integer value after an equation mark"
+        input String line;
+        input Integer startIdx;
+        output Boolean found = false;
+        output Integer value = 0;
+      protected
+        Modelica.Utilities.Types.TokenValue token;
+        Integer length = Modelica.Utilities.Strings.length(line);
+        Integer nextIdx = startIdx;
+      algorithm
+         //Modelica.Utilities.Streams.print("LINE "+line);
+         while
+              (not found) loop
+           (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+           if (token.tokenType == Modelica.Utilities.Types.TokenType.DelimiterToken) and token.string=="=" then
+             //Modelica.Utilities.Streams.print("Token "+String(token.tokenType));
+             (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+             if (token.tokenType == Modelica.Utilities.Types.TokenType.IntegerToken) then
+               //Modelica.Utilities.Streams.print("Got Real Token "+String(token.real));
+               value := token.integer;
+             end if;
+           end if;
+           if
+             (nextIdx>=length) then
+             break;
+           end if;
+         end while;
+
+      end getIntegerValue;
+
       function getSID_DataStructure
         input String fileName;
         output EMBSlib.Types.SID_DataStructure struc;
       protected
         Boolean endOfFile=false;
+        Boolean found = false;
         String file;
         String line;
         Modelica.Utilities.Types.TokenValue token;
-        Integer iline=1;
+        Integer lineIdx=1;
         Integer nextIndex,nextTokenIdx;
-        Boolean found;
+        Boolean foundPart=false;
         EMBSlib.Types.Taylortest t;
       algorithm
          file :=Modelica.Utilities.Files.loadResource(fileName);
 
          // the first 2 integer tokens are numNodes and numModes
-         (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, 1);
-         Modelica.Utilities.Streams.print(line);
+         (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
          (struc.numNodes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line,1);
          (struc.numModes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line, nextTokenIdx);
          struc.J.nrow:=3;
          struc.J.ncol:=struc.numNodes;
          struc.J.M0 := EMBSlib.SID.ParserFunctions.getTaylor(struc.J.nrow,struc.J.ncol);
+         lineIdx := lineIdx+1;
 
-         //struc.nodes :=EMBSlib.SID.ParserFunctions.getNodes(3);
+         //get the modal information
+         (struc.modal.mass,struc.modal.nelastq,lineIdx) := parseModalData(file,lineIdx) annotation(Evaluate=true);
+         struc.modal.freq := parseModalFrequencies(file,lineIdx,struc.modal.nelastq);
 
-         while not found and not endOfFile loop
-          (token, nextIndex) := Modelica.Utilities.Strings.scanToken(line);
-          found := true;
-          // read next line
-          //(line, endOfFile) := Modelica.Utilities.Streams.readLine(fileName, iline);
-         end while;
+         //traverse the node data
+
+
       end getSID_DataStructure;
 
       function getTaylor
@@ -1002,6 +1086,191 @@ package EMBSlib
           node[i].M0 := EMBSlib.SID.ParserFunctions.getTaylor(2,2);
         end for;
       end getNodes;
+
+      function findObject
+        input String file;
+        input Integer lineIdxIn;
+        input String objectName;
+        output Boolean found = false;
+        output Integer lineIdxOut;
+      protected
+        Boolean endOfFile = false;
+        Boolean foundModal = false;
+        Integer nextTokenIdx = 1;
+        Integer lineLength;
+        Integer lineIdx = lineIdxIn;
+        String line;
+        Modelica.Utilities.Types.TokenValue token;
+      algorithm
+        while not found and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkForIdentifier(line,objectName);
+          if (not found) then
+            lineIdx := lineIdx+1;
+          end if;
+        end while;
+
+        lineIdxOut := lineIdx;
+      end findObject;
+
+      function findObject2
+        input String file;
+        input Integer lineIdxIn;
+        input String objectName1;
+        input String objectName2;
+        output Boolean found = false;
+        output Integer lineIdxOut;
+      protected
+        Boolean endOfFile = false;
+        Boolean foundModal = false;
+        Integer nextTokenIdx = 1;
+        Integer lineLength;
+        Integer lineIdx = lineIdxIn;
+        String line;
+        Modelica.Utilities.Types.TokenValue token;
+      algorithm
+        while not found and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkFor2Identifier(line,objectName1, objectName2);
+          if (not found) then
+            lineIdx := lineIdx+1;
+          end if;
+        end while;
+
+        lineIdxOut := lineIdx;
+      end findObject2;
+
+      function findModal
+        input String file;
+        input Integer lineIdxIn;
+        output Boolean foundModal = false;
+        output Integer lineIdxOut;
+      protected
+        Boolean endOfFile = false;
+        Integer nextIdx = 1;
+        Integer lineLength;
+        Integer lineIdx = lineIdxIn;
+        String line;
+        Modelica.Utilities.Types.TokenValue token;
+      algorithm
+        while not foundModal and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (foundModal, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkFor2Identifier(line,"new","modal");
+          lineIdx := lineIdx+1;
+          if (foundModal) then
+            Modelica.Utilities.Streams.print("found modal in "+line);
+          end if;
+        end while;
+
+        lineIdxOut := lineIdx;
+      end findModal;
+
+      function checkFor2Identifier
+        input String line;
+        input String id1;
+        input String id2;
+        output Boolean found = false;
+        output Integer nextTokenId;
+      protected
+        Integer nextIdx = 1;
+        Integer lineLength;
+        Modelica.Utilities.Types.TokenValue token;
+
+      algorithm
+          lineLength := Modelica.Utilities.Strings.length(line);
+          while not found and nextIdx<lineLength loop
+            (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+            if (token.tokenType == Modelica.Utilities.Types.TokenType.IdentifierToken) then
+              if (token.string == id1) then
+                Modelica.Utilities.Streams.print("found first token "+id1);
+                (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+                if (token.tokenType == Modelica.Utilities.Types.TokenType.IdentifierToken) then
+                  if (token.string == id2) then
+                    Modelica.Utilities.Streams.print("found second token "+id2);
+                    found :=true;
+                  end if;
+                end if;
+              end if;
+            end if;
+          end while;
+      end checkFor2Identifier;
+
+      function checkForIdentifier
+        input String line;
+        input String id1;
+        output Boolean found = false;
+        output Integer nextTokenId;
+      protected
+        Integer nextIdx = 1;
+        Integer lineLength;
+        Modelica.Utilities.Types.TokenValue token;
+
+      algorithm
+          lineLength := Modelica.Utilities.Strings.length(line);
+          while not found and nextIdx<lineLength loop
+            (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+            if (token.tokenType == Modelica.Utilities.Types.TokenType.IdentifierToken) then
+              if (token.string == id1) then
+                (token, nextIdx) := Modelica.Utilities.Strings.scanToken(line,nextIdx);
+                found :=true;
+              end if;
+            end if;
+          end while;
+      end checkForIdentifier;
+
+      function parseModalData
+        input String file;
+        input Integer lineIdxIn;
+        output Real mass = 1.4;
+        output Integer nelastq = 2;
+        output Integer lineIdxOut;
+      protected
+        Integer lineIdx;
+        String line;
+        Boolean endOfFile;
+
+        Boolean found;
+      algorithm
+        (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdxIn,"refmod");
+        if
+          (found) then
+
+            (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdxIn,"mass");
+            if (found) then
+              (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+              (found,mass) := EMBSlib.SID.ParserFunctions.getRealValue(line,1,"=");
+            end if;
+
+            (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdxIn,"nelastq");
+            if (found) then
+              (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+              (found,nelastq) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1);
+            end if;
+        end if;
+        lineIdxOut := lineIdx;
+      end parseModalData;
+
+      function parseModalFrequencies
+        input String file;
+        input Integer lineIdxIn;
+        input Integer numFreqs;
+        output Real[numFreqs] freqs;
+        output Integer lineIdxOut;
+      protected
+        Integer lineIdx;
+        String line;
+        Boolean endOfFile;
+        Boolean found;
+      algorithm
+        (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdxIn,"ielastq");
+        for i in 1: numFreqs loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found,freqs[i]) := EMBSlib.SID.ParserFunctions.getRealValue(line,1,":");
+          lineIdx := lineIdx+1;
+        end for;
+
+        lineIdxOut := lineIdx;
+      end parseModalFrequencies;
     end ParserFunctions;
   end SID;
   annotation (uses(Modelica(version="3.2.3")));
