@@ -727,7 +727,8 @@ package EMBSlib
       Integer numNodes;
       Integer numModes;
       Modal modal;
-      //Taylortest[numNodes] nodes;
+      //Real[nelastq] modalFreqs;
+      Taylor mdCM;
       Taylortest J;
       annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(coordinateSystem(preserveAspectRatio=false)));
     end SID_DataStructure;
@@ -735,15 +736,13 @@ package EMBSlib
     record Taylortest
       Integer nrow;
       Integer ncol;
-      Real[nrow,ncol] M0; //nrows,ncol
+      //Real[nrow,ncol] M0; //nrows,ncol
       //Real[nrow,nq,ncol] M1; //rows,q,cols
     end Taylortest;
 
     record Modal
       Real mass;
       Integer nelastq;
-      Real[nelastq] freq;
-
       annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
             coordinateSystem(preserveAspectRatio=false)));
     end Modal;
@@ -915,9 +914,14 @@ package EMBSlib
     model SID_File
 
       parameter String fileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+      parameter String file = Modelica.Utilities.Files.loadResource(fileName);
+
       parameter EMBSlib.Types.SID_DataStructure sid = EMBSlib.SID.ParserFunctions.getSID_DataStructure(fileName) annotation(Evaluate=true);
-      parameter EMBSlib.Types.Taylortest[sid.numNodes] nodes = EMBSlib.SID.ParserFunctions.getNodes(sid.numNodes)  annotation(Evaluate=true);
-      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+      //parameter Real[sid.modal.nelastq] modalFreqs= EMBSlib.SID.ParserFunctions.parseModalFrequencies(file,1,sid.modal.nelastq);
+    //  parameter Integer numNodes = 6;
+
+     // parameter EMBSlib.Types.Taylortest[sid.numNodes] nodes = EMBSlib.SID.ParserFunctions.getNodes(sid.numNodes)  annotation(Evaluate=true);
+     annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
             coordinateSystem(preserveAspectRatio=false)));
     end SID_File;
 
@@ -1047,15 +1051,15 @@ package EMBSlib
          (struc.numModes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line, nextTokenIdx);
          struc.J.nrow:=3;
          struc.J.ncol:=struc.numNodes;
-         struc.J.M0 := EMBSlib.SID.ParserFunctions.getTaylor(struc.J.nrow,struc.J.ncol);
+         //struc.J.M0 := EMBSlib.SID.ParserFunctions.getTaylor(struc.J.nrow,struc.J.ncol);
          lineIdx := lineIdx+1;
 
          //get the modal information
          (struc.modal.mass,struc.modal.nelastq,lineIdx) := parseModalData(file,lineIdx) annotation(Evaluate=true);
-         struc.modal.freq := parseModalFrequencies(file,lineIdx,struc.modal.nelastq);
+         //struc.modal.freq := parseModalFrequencies(file,lineIdx,struc.modal.nelastq);
 
          //traverse the node data
-
+         (struc.mdCM,lineIdx) := parseTaylorData( file,lineIdx, "mdCM");
 
       end getSID_DataStructure;
 
@@ -1079,10 +1083,17 @@ package EMBSlib
       function getNodes
         input Integer size;
         output EMBSlib.Types.Taylortest[size] node;
+      protected
+        Integer nrow;
+        Integer ncol;
       algorithm
         for i in 1:size loop
-          node[i].nrow := 2;
-          node[i].ncol := 2;
+          //node[i].order := 1;
+          node[i].nrow := 2+i;
+          node[i].ncol := 2+i;
+          //node[i].nq := i;
+          //node[i].nqn := 3;
+          //node[i].structure := 2;
           node[i].M0 := EMBSlib.SID.ParserFunctions.getTaylor(2,2);
         end for;
       end getNodes;
@@ -1271,6 +1282,44 @@ package EMBSlib
 
         lineIdxOut := lineIdx;
       end parseModalFrequencies;
+
+      function parseTaylorData
+        input String file;
+        input Integer lineIdxIn;
+        input String taylorName;
+        output EMBSlib.Types.Taylor t;
+        output Integer lineIdxOut;
+      protected
+        Integer lineIdx;
+        String line;
+        Boolean endOfFile;
+        Boolean found;
+      algorithm
+          t.order := 1;
+          t.nrow := 2;
+          t.ncol := 3;
+          t.nq := 4;
+          t.nqn := 5;
+          t.structure := 6;
+          //t.M0 := parseMatrix2(file, lineIdxIn,t.nrow,t.ncol);
+      end parseTaylorData;
+
+      function parseMatrix2
+        input String file;
+        input Integer lineIdxIn;
+        input Integer nrow;
+        input Integer ncol;
+        output Real [nrow,ncol] M0;
+        output Integer lineIdxOut;
+      protected
+        Integer lineIdx;
+        String line;
+        Boolean endOfFile;
+        Boolean found;
+      algorithm
+
+
+      end parseMatrix2;
     end ParserFunctions;
   end SID;
   annotation (uses(Modelica(version="3.2.3")));
