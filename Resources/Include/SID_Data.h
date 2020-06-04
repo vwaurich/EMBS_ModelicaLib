@@ -279,4 +279,62 @@ double getAPM1(void* p_eo, int nodeIdx, int r, int q, int c, int dimR, int dimQ,
 }
 
 
+
+//All remaining taylors
+//=================================
+
+taylor* getTaylorPtr(void* p_eo, const char* taylorName){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	taylor* t;
+	if(!strcmp(taylorName,"mdCM")){
+		t = &extObj->sid->mdCM;
+	}
+	else if(!strcmp(taylorName,"J")){
+		t = &extObj->sid->J;
+	}
+	return t;
+}
+
+int getTaylorOrder(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->order;
+}
+
+int getTaylorNrow(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->nrow;
+}
+
+int getTaylorNcol(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->ncol;
+}
+
+int getTaylorNq(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->nq;
+}
+
+int getTaylorNqn(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->nqn;
+}
+
+int getTaylorStructure(void* p_eo, const char* taylorName){
+	taylor* t = getTaylorPtr(p_eo,taylorName);
+	return t->structure;
+}
+
+double getTaylorM0(void* p_eo, const char* taylorName, int r, int c, int dimR, int dimC){
+	taylor* t = getTaylorPtr(p_eo, taylorName);
+	int i = (c-1) + (r-1) * dimC;
+	return t->M0[i];
+}
+
+double getTaylorM1(void* p_eo, const char* taylorName, int r, int q, int c, int dimR, int dimQ, int dimC){
+	taylor* t = getTaylorPtr(p_eo, taylorName);
+	int i = (c-1) + (r-1) * dimC + (q-1) * dimC*dimR;
+	return t->M1[i];
+}
+
 #endif

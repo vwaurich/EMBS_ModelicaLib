@@ -44,14 +44,16 @@ package EMBSlib
     model Nodes
       parameter Integer numNodes = 9;
       parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
-      EMBSlib.Types.Taylor origin[numNodes];
-      EMBSlib.Types.Taylor phi[numNodes];
-      EMBSlib.Types.Taylor psi[numNodes];
-      EMBSlib.Types.Taylor AP[numNodes];
-
-      EMBSlib.SID_Data sid = EMBSlib.SID_Data(SIDfileName);
+       EMBSlib.Types.Taylor origin[numNodes];
+       EMBSlib.Types.Taylor phi[numNodes];
+       EMBSlib.Types.Taylor psi[numNodes];
+       EMBSlib.Types.Taylor AP[numNodes];
+       EMBSlib.Types.Taylor J;
+       EMBSlib.SID_Data sid = EMBSlib.SID_Data(SIDfileName);
 
     algorithm
+      J :=  EMBSlib.Functions.getTaylor(sid, "J");
+
       for i in 1:numNodes loop
 
         //origin
@@ -212,6 +214,17 @@ package EMBSlib
                 100,100}}), graphics));
     end Nodes;
 
+    model Node
+      parameter Integer numNodes = 9;
+      parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+      EMBSlib.Types.Taylor  J = EMBSlib.Functions.getTaylor(sid, "J");
+      EMBSlib.SID_Data sid = EMBSlib.SID_Data(SIDfileName) annotation (Evaluate=true);
+
+    algorithm
+      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+            coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
+                100,100}}), graphics));
+    end Node;
   end Components;
 
   class SID_Data
@@ -607,6 +620,91 @@ package EMBSlib
       annotation(Include="#include \"SID_Data.h\"",
                   Library={"readSIDlib"});
       end getAPM1;
+
+    //remaining Taylor================================================
+    //=========================================================
+
+    pure function getTaylorOrder
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer order;
+    external"C" order = getTaylorOrder(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorOrder;
+
+    function getTaylorNrow
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer nrow;
+    external"C" nrow = getTaylorNrow(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorNrow;
+
+    function getTaylorNcol
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer ncol;
+    external"C" ncol = getTaylorNcol(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorNcol;
+
+    function getTaylorNq
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer nq;
+    external"C" nq = getTaylorNq(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorNq;
+
+    function getTaylorNqn
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer nqn;
+    external"C" nqn = getTaylorNqn(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorNqn;
+
+    function getTaylorStructure
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      output Integer nqn;
+    external"C" nqn = getTaylorStructure(sid, tName) annotation (
+          Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorStructure;
+
+    function getTaylorM0
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      input Integer r;
+      input Integer c;
+      input Integer dimR;
+      input Integer dimC;
+      output Real value;
+      external "C" value = getTaylorM0(sid,tName,r,c, dimR, dimC)
+      annotation(Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+    end getTaylorM0;
+
+      function getTaylorM1
+      input EMBSlib.SID_Data sid;
+      input String tName;
+      input Integer r;
+      input Integer q;
+      input Integer c;
+      input Integer dimR;
+      input Integer dimQ;
+      input Integer dimC;
+      output Real value;
+      external "C" value = getTaylorM1(sid,tName,r,q,c, dimR,dimQ, dimC)
+      annotation(Include="#include \"SID_Data.h\"",
+                  Library={"readSIDlib"});
+      end getTaylorM1;
   end ExternalFunctions;
 
   package Types
@@ -617,13 +715,27 @@ package EMBSlib
       Integer nq;
       Integer nqn;
       Integer structure;
-      Real[3,3] M0; //nrows,ncol
-      Real[3,3,3] M1; //rows,q,cols
+      //Real[nrow,ncol] M0; //nrows,ncol
+      //Real[nrow,nq,ncol] M1; //rows,q,cols
     end Taylor;
 
     record Matrix31
         Real M[3];
     end Matrix31;
+
+    record SID_DataStructure
+      Integer numNodes;
+      Integer numModes;
+      Taylortest J;
+      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(coordinateSystem(preserveAspectRatio=false)));
+    end SID_DataStructure;
+
+    record Taylortest
+      Integer nrow;
+      Integer ncol;
+      Real[nrow,ncol] M0; //nrows,ncol
+      //Real[nrow,nq,ncol] M1; //rows,q,cols
+    end Taylortest;
   end Types;
 
   package Functions
@@ -742,7 +854,141 @@ package EMBSlib
             nodeOrig.nq,
             nodeOrig.ncol);
     end getOrigin;
+
+     function getTaylor
+        input EMBSlib.SID_Data sid;
+        input String tName;
+        output EMBSlib.Types.Taylor taylor;
+     algorithm
+       taylor.order := EMBSlib.ExternalFunctions.getTaylorOrder(sid, tName)
+                                                                           annotation(Evaluate=true);
+       taylor.nrow := EMBSlib.ExternalFunctions.getTaylorNrow(sid, tName)
+                                                                         annotation(Evaluate=true);
+       taylor.ncol := EMBSlib.ExternalFunctions.getTaylorNcol(sid, tName)
+                                                                         annotation(Evaluate=true);
+       taylor.nq := EMBSlib.ExternalFunctions.getTaylorNq(sid, tName)
+                                                                     annotation(Evaluate=true);
+       taylor.nqn := EMBSlib.ExternalFunctions.getTaylorNqn(sid, tName)
+                                                                       annotation(Evaluate=true);
+
+       taylor.structure := EMBSlib.ExternalFunctions.getTaylorStructure(sid, tName)
+                                                                                   annotation(Evaluate=true);
+        for r0 in (1:taylor.nrow) loop
+          for c0 in (1:taylor.ncol) loop
+              //taylor.M0[r0,c0] := EMBSlib.ExternalFunctions.getTaylorM0(sid, tName,r0,c0,taylor.nrow,taylor.ncol);
+      end for;
+        end for;
+
+      for r1 in (1:taylor.nrow) loop
+        for q1 in (1:taylor.nq) loop
+          for c1 in (1:taylor.ncol) loop
+              //taylor.M1[r1,q1,c1] := EMBSlib.ExternalFunctions.getTaylorM1(sid, tName,r1,q1,c1,taylor.nrow,taylor.nq, taylor.ncol);
+      end for;
+      end for;
+      end for;
+     end getTaylor;
+
   end Functions;
 
-  annotation (uses(Modelica(version="3.2.1")));
+  package SID
+    model Taylor
+      parameter Integer nrow;
+      parameter Integer ncol;
+      parameter Real[nrow,ncol] M0 = EMBSlib.SID.ParserFunctions.getTaylor(nrow);
+
+
+      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+            coordinateSystem(preserveAspectRatio=false)));
+    end Taylor;
+
+    model SID_File
+
+      parameter String fileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+      parameter EMBSlib.Types.SID_DataStructure sid = EMBSlib.SID.ParserFunctions.getSID_DataStructure(fileName) annotation(Evaluate=true);
+
+      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+            coordinateSystem(preserveAspectRatio=false)));
+    end SID_File;
+
+    package ParserFunctions
+
+      function getNextInteger
+        input String line;
+        input Integer startIdx;
+        output Integer i;
+        output Boolean found = false;
+        output Integer nextIndex = startIdx+1;
+      protected
+        Modelica.Utilities.Types.TokenValue token;
+        Integer length = Modelica.Utilities.Strings.length(line);
+      algorithm
+         while
+              (not found) loop
+           (token, nextIndex) := Modelica.Utilities.Strings.scanToken(line,startIdx);
+           if
+             (token.tokenType == Modelica.Utilities.Types.TokenType.IntegerToken) then
+             i := token.integer;
+             found :=true;
+           end if;
+           if
+             (nextIndex>=length) then
+             i :=-1;
+             break;
+           end if;
+
+         end while;
+
+      end getNextInteger;
+
+      function getSID_DataStructure
+        input String fileName;
+        output EMBSlib.Types.SID_DataStructure struc;
+      protected
+        Boolean endOfFile=false;
+        String file;
+        String line;
+        Modelica.Utilities.Types.TokenValue token;
+        Integer iline=1;
+        Integer nextIndex,nextTokenIdx;
+        Boolean found;
+        EMBSlib.Types.Taylortest t;
+      algorithm
+         file :=Modelica.Utilities.Files.loadResource(fileName);
+
+         // the first 2 integer tokens are numNodes and numModes
+         (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, 1);
+         Modelica.Utilities.Streams.print(line);
+         (struc.numNodes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line,1);
+         (struc.numModes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line, nextTokenIdx);
+         struc.J.nrow:=3;
+         struc.J.ncol:=struc.numNodes;
+         struc.J.M0 := EMBSlib.SID.ParserFunctions.getTaylor(struc.J.nrow,struc.J.ncol);
+
+         while not found and not endOfFile loop
+          (token, nextIndex) := Modelica.Utilities.Strings.scanToken(line);
+          found := true;
+          // read next line
+          //(line, endOfFile) := Modelica.Utilities.Streams.readLine(fileName, iline);
+         end while;
+      end getSID_DataStructure;
+
+      function getTaylor
+        input Integer nrow;
+        input Integer ncol;
+        output Real[nrow,ncol] M0;
+      algorithm
+        for i in 1:nrow loop
+          M0[i,1] :=i;
+          M0[i,2] :=i+1;
+        end for;
+      end getTaylor;
+
+      function testF
+        output Integer i;
+      algorithm
+        i:=3;
+      end testF;
+    end ParserFunctions;
+  end SID;
+  annotation (uses(Modelica(version="3.2.3")));
 end EMBSlib;
