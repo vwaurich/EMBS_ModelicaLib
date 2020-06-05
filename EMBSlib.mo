@@ -922,9 +922,29 @@ package EMBSlib
 
   package SID
     model Taylor
-      parameter Integer nrow= 1;
-      parameter Integer ncol= 1;
-     parameter Real[nrow,ncol] M0 annotation(Evaluate=true);
+      parameter String file;
+      parameter Integer nodeId;
+      parameter Integer nodeLineIdx = EMBSlib.SID.ParserFunctions.getLineIndexForNode(file,nodeId);
+      parameter Integer nrow = EMBSlib.SID.ParserFunctions.getNodeNumRow(file,nodeLineIdx,nodeId);
+      parameter Integer ncol = EMBSlib.SID.ParserFunctions.getNodeNumCol(file,nodeLineIdx,nodeId);
+      parameter Real[nrow,ncol] origin_M0 = EMBSlib.SID.ParserFunctions.parseMatrix2(file,nodeLineIdx,nrow,ncol);
+
+      Real[3] rShape;
+      Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
+        r=rShape,
+        shapeType="sphere",
+        length=0.1,
+        width=0.1,
+        height=0.1) annotation (Placement(transformation(extent={{-80,62},{-60,82}})));
+      Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a annotation (Placement(transformation(extent={{84,-14},{116,18}})));
+    algorithm
+          rShape[1] := origin_M0[1,1];
+          rShape[2] := origin_M0[2,1];
+          rShape[3] := origin_M0[3,1];
+
+          frame_a.r_0 := rShape;
+          frame_a.R := Modelica.Mechanics.MultiBody.Frames.nullRotation();
+
     end Taylor;
 
     model SID_File
@@ -934,8 +954,11 @@ package EMBSlib
 
       parameter EMBSlib.Types.SID_DataStructure sid = EMBSlib.SID.ParserFunctions.getSID_DataStructure(fileName) annotation(Evaluate=true);
 
-      EMBSlib.SID.Taylor node(nrow=3,ncol=4);
-    //  parameter Integer numNodes = 6;
+      parameter Integer n = size(nodeLst,1);
+      parameter Integer[:] nodeLst =  {1,2,12,26,78,84,107,143,149};
+
+      Taylor nodes[n]( each file = file,nodeId=nodeLst) annotation (Placement(transformation(extent={{-80,40},{-60,60}})));
+
 
     //check out: https://github.com/modelica/ModelicaSpecification/issues/2282
 
@@ -952,6 +975,7 @@ package EMBSlib
       //parameter Real M3[2,2] = {{21,24},{25,26}};
 
       //parameter EMBSlib.Types.Taylor2[3] nodes(nrow=rows, ncol=cols,M0 = {M1,M2,M3})
+
 
 
         annotation (Placement(transformation(extent={{-78,0},{-58,20}})),
@@ -1084,6 +1108,7 @@ package EMBSlib
          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
          (struc.numNodes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line,1);
          (struc.numModes,found,nextTokenIdx) := EMBSlib.SID.ParserFunctions.getNextInteger(line, nextTokenIdx);
+         //struc.nodes := EMBSlib.SID.ParserFunctions.getNodes(2);
 
          //get the modal information
          //(struc.modal.mass,struc.modal.nelastq,lineIdx) := parseModalData(file,lineIdx) annotation(Evaluate=true);
@@ -1092,17 +1117,17 @@ package EMBSlib
          //traverse the node data
 
          //traverse the additional data
-         (struc.mdCM,lineIdx) := parseTaylorData( file,lineIdx, "mdCM");
-         (struc.J,lineIdx) := parseTaylorData( file,lineIdx, "J");
-         (struc.Ct,lineIdx) := parseTaylorData( file,lineIdx, "Ct");
-         (struc.Cr,lineIdx) := parseTaylorData( file,lineIdx, "Cr");
-         (struc.Me,lineIdx) := parseTaylorData( file,lineIdx, "Me");
-         (struc.Gr,lineIdx) := parseTaylorData( file,lineIdx, "Gr");
-         (struc.Ge,lineIdx) := parseTaylorData( file,lineIdx, "Ge");
-         (struc.Oe,lineIdx) := parseTaylorData( file,lineIdx, "Oe");
-         (struc.ksigma,lineIdx) := parseTaylorData( file,lineIdx, "ksigma");
-         (struc.Ke,lineIdx) := parseTaylorData( file,lineIdx, "Ke");
-         (struc.De,lineIdx) := parseTaylorData( file,lineIdx, "De");
+         //(struc.mdCM,lineIdx) := parseTaylorData( file,lineIdx, "mdCM");
+         //(struc.J,lineIdx) := parseTaylorData( file,lineIdx, "J");
+         //(struc.Ct,lineIdx) := parseTaylorData( file,lineIdx, "Ct");
+         //(struc.Cr,lineIdx) := parseTaylorData( file,lineIdx, "Cr");
+         //(struc.Me,lineIdx) := parseTaylorData( file,lineIdx, "Me");
+         //(struc.Gr,lineIdx) := parseTaylorData( file,lineIdx, "Gr");
+         //(struc.Ge,lineIdx) := parseTaylorData( file,lineIdx, "Ge");
+         //(struc.Oe,lineIdx) := parseTaylorData( file,lineIdx, "Oe");
+         //(struc.ksigma,lineIdx) := parseTaylorData( file,lineIdx, "ksigma");
+         //(struc.Ke,lineIdx) := parseTaylorData( file,lineIdx, "Ke");
+         //(struc.De,lineIdx) := parseTaylorData( file,lineIdx, "De");
       end getSID_DataStructure;
 
       function getSID_DataStructureNodes
@@ -1144,7 +1169,7 @@ package EMBSlib
       algorithm
         for i in 1:nrow loop
           M0[i,1] :=i;
-          M0[i,2] :=i+1;
+          M0[i,1] :=i+1;
         end for;
       end getTaylor;
 
@@ -1162,7 +1187,7 @@ package EMBSlib
           node[i].nq := i;
           node[i].nqn := 3;
           node[i].structure := 2;
-          node[i].M0 := EMBSlib.SID.ParserFunctions.getTaylor(2,2);
+         // node[i].M0 := EMBSlib.SID.ParserFunctions.getTaylor(2,2);
         end for;
       end getNodes;
 
@@ -1480,20 +1505,129 @@ package EMBSlib
         input Integer nrow;
         input Integer ncol;
         output Real [nrow,ncol] M0;
-        output Integer lineIdxOut;
       protected
-        Integer lineIdx;
+        Integer lineIdx=lineIdxIn;
+        Integer lineIdxEnd;
         String line;
         Boolean endOfFile;
         Boolean found;
+        Integer idx1,idx2;
+        Real value;
       algorithm
-        for r in 1:nrow loop
-          for c in 1:ncol loop
-            M0[r,c] := r+c;
-          end for;
-        end for;
+        found :=true;
+        Modelica.Utilities.Streams.print("parseMAtrix2 "+String(nrow)+": "+String(ncol)+" at line "+String(lineIdx));
+        while found and not endOfFile loop
+          (found,lineIdxEnd) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdx,"end");
+          (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdx,"m0");
+            Modelica.Utilities.Streams.print("next end  "+String(lineIdxEnd)+" and next m0 "+String(lineIdx));
 
+
+          if
+            (lineIdxEnd<lineIdx) then
+            endOfFile :=true;
+          else
+           (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+           (found, idx1,idx2,value) := EMBSlib.SID.ParserFunctions.checkForMatrix2Entry(line,"m0");
+            Modelica.Utilities.Streams.print(String(found)+" Found Matrix entry m0: "+String(idx1)+" "+String(idx2)+"  "+String(value));
+            M0[idx1,idx2] := value;
+          end if;
+            lineIdx :=lineIdx + 1;
+        end while;
       end parseMatrix2;
+
+      function getNodeNumRow
+        input String file;
+        input Integer lineIdxIn;
+        input Integer nodeId;
+        output Integer numRow;
+      protected
+        Boolean found=false;
+        Boolean endOfFile;
+        Integer lineIdx=lineIdxIn;
+        Integer nextTokenIdx;
+        Integer idx;
+        String line;
+      algorithm
+        while not found and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkFor2Identifier(line,"new","node");
+          if (found) then
+            (found,idx) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1,"=");
+            found := idx==nodeId;
+            //correct node identifier found
+            if
+              (found) then
+              (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdx,"nrow");
+               if
+                 (found) then
+                 (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+                 (found,numRow) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1, "=");
+                end if;
+            end if;
+          end if;
+          lineIdx := lineIdx+1;
+        end while;
+      end getNodeNumRow;
+
+      function getNodeNumCol
+        input String file;
+        input Integer lineIdxIn;
+        input Integer nodeId;
+        output Integer numRow;
+      protected
+        Boolean found=false;
+        Boolean endOfFile;
+        Integer lineIdx=lineIdxIn;
+        Integer nextTokenIdx;
+        Integer idx;
+        String line;
+      algorithm
+        while not found and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkFor2Identifier(line,"new","node");
+          if (found) then
+            (found,idx) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1,"=");
+            found := idx==nodeId;
+            //correct node identifier found
+            if
+              (found) then
+              (found,lineIdx) := EMBSlib.SID.ParserFunctions.findObject(file,lineIdx,"ncol");
+               if
+                 (found) then
+                 (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+                 (found,numRow) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1, "=");
+                end if;
+            end if;
+          end if;
+          lineIdx := lineIdx+1;
+        end while;
+      end getNodeNumCol;
+
+      function getLineIndexForNode
+        input String file;
+        input Integer nodeId;
+        output Integer lineIdxOut;
+      protected
+        Boolean found=false;
+        Boolean endOfFile;
+        Integer lineIdx=1;
+        Integer nextTokenIdx;
+        Integer idx;
+        String line;
+      algorithm
+        while not found and not endOfFile loop
+          (line, endOfFile) := Modelica.Utilities.Streams.readLine(file, lineIdx);
+          (found, nextTokenIdx) := EMBSlib.SID.ParserFunctions.checkFor2Identifier(line,"new","node");
+          if (found) then
+            (found,idx) := EMBSlib.SID.ParserFunctions.getIntegerValue(line,1,"=");
+            found := idx==nodeId;
+            if (found) then
+              lineIdxOut := lineIdx;
+            end if;
+          end if;
+          lineIdx := lineIdx+1;
+        end while;
+      end getLineIndexForNode;
     end ParserFunctions;
   end SID;
   annotation (uses(Modelica(version="3.2.3")));
