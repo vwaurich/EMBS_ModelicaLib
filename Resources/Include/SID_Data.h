@@ -13,28 +13,41 @@ typedef struct{
 void* SID_Constructor(char* fileName){
 	extObjSID* extObj = (extObjSID*)malloc(sizeof(extObjSID));
 	ModelicaFormatMessage("SID_Data.h: Create SID object of file %s \n",fileName);
-	extObj->sid = SIDFileConstructor(fileName);
+	extObj->sid = (extObjSID*)SIDFileConstructor(fileName);
+	
+	ModelicaFormatMessage("mdCM  [%d,%d, %d]  at %p\n",extObj->sid->mdCM.nrow,extObj->sid->mdCM.ncol,extObj->sid->mdCM.nq,(void*)&extObj->sid->mdCM);
+	ModelicaFormatMessage("J  [%d,%d, %d]  at %p\n",extObj->sid->J.nrow,extObj->sid->J.ncol,extObj->sid->J.nq,(void*)&extObj->sid->J);
+	ModelicaFormatMessage("Ct  [%d,%d, %d]  at %p\n",extObj->sid->Ct.nrow,extObj->sid->Ct.ncol,extObj->sid->Ct.nq,(void*)&extObj->sid->Ct);
+	ModelicaFormatMessage("Cr  [%d,%d, %d]  at %p\n",extObj->sid->Cr.nrow,extObj->sid->Cr.ncol,extObj->sid->Cr.nq,(void*)&extObj->sid->Cr);
+	ModelicaFormatMessage("Me  [%d,%d, %d]  at %p\n",extObj->sid->Me.nrow,extObj->sid->Me.ncol,extObj->sid->Me.nq,(void*)&extObj->sid->Me);
+	ModelicaFormatMessage("Gr  [%d,%d, %d]  at %p\n",extObj->sid->Gr.nrow,extObj->sid->Gr.ncol,extObj->sid->Gr.nq,(void*)&extObj->sid->Gr);
+	ModelicaFormatMessage("Ge  [%d,%d, %d]  at %p\n",extObj->sid->Ge.nrow,extObj->sid->Ge.ncol,extObj->sid->Ge.nq,(void*)&extObj->sid->Ge);
+	ModelicaFormatMessage("Oe  [%d,%d, %d]  at %p\n",extObj->sid->Oe.nrow,extObj->sid->Oe.ncol,extObj->sid->Oe.nq,(void*)&extObj->sid->Oe);
+	ModelicaFormatMessage("ksigma  [%d,%d, %d]  at %p\n",extObj->sid->ksigma.nrow,extObj->sid->ksigma.ncol,extObj->sid->ksigma.nq,(void*)&extObj->sid->ksigma);
+	ModelicaFormatMessage("Ke  [%d,%d, %d]  at %p\n",extObj->sid->Ke.nrow,extObj->sid->Ke.ncol,extObj->sid->Ke.nq,(void*)&extObj->sid->Ke);
+	ModelicaFormatMessage("De  [%d,%d, %d]  at %p\n",extObj->sid->De.nrow,extObj->sid->De.ncol,extObj->sid->De.nq,(void*)&extObj->sid->De);
+	
 	return (void *)extObj;
 }
 
 void SID_Destructor(void* p_eo){
 	extObjSID* extObj = (extObjSID*)p_eo;
-	//int i=0;
-	//for(i=0;i<(extObj->sid->numNodes);i++)
-	//{
-	//	free(extObj->sid->nodes[i].orig.M0);
-	//	free(extObj->sid->nodes[i].orig.M1);
-	//	free(extObj->sid->nodes[i].orig.Mn);
-	//	free(extObj->sid->nodes[i].phi.M0);
-	//	free(extObj->sid->nodes[i].phi.M1);
-	//	free(extObj->sid->nodes[i].phi.Mn);
-	//	free(extObj->sid->nodes[i].psi.M0);
-	//	free(extObj->sid->nodes[i].psi.M1);
-	//	free(extObj->sid->nodes[i].psi.Mn);
-	//	free(extObj->sid->nodes[i].AP.M0);
-	//	free(extObj->sid->nodes[i].AP.M1);
-	//	free(extObj->sid->nodes[i].AP.Mn);
-	//}
+	int i=0;
+	for(i=0;i<(extObj->sid->numNodes);i++)
+	{
+		free(extObj->sid->nodes[i].orig.M0);
+		free(extObj->sid->nodes[i].orig.M1);
+		free(extObj->sid->nodes[i].orig.Mn);
+		free(extObj->sid->nodes[i].phi.M0);
+		free(extObj->sid->nodes[i].phi.M1);
+		free(extObj->sid->nodes[i].phi.Mn);
+		free(extObj->sid->nodes[i].psi.M0);
+		free(extObj->sid->nodes[i].psi.M1);
+		free(extObj->sid->nodes[i].psi.Mn);
+		free(extObj->sid->nodes[i].AP.M0);
+		free(extObj->sid->nodes[i].AP.M1);
+		free(extObj->sid->nodes[i].AP.Mn);
+	}
 	//free(extObj->sid->mdCM.M0);
 	//free(extObj->sid->mdCM.M1);
 	//free(extObj->sid->mdCM.Mn);
@@ -83,9 +96,149 @@ int getNumberOfModes(void* p_eo){
 	return extObj->sid->numModes;
 }
 
+double getMass(void* p_eo){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	return extObj->sid->modeStruct.mass;
+}
+
+
 
 //Taylor Retrieval
 //=================================
+
+taylor* getTaylorByName(SID_Data* sid, const char* name)
+{
+	//ModelicaFormatMessage("getTaylorByName %s\n",name);
+	if(!strcmp(name,"mdCM")){
+		return &sid->mdCM;
+	}
+	else if (!strcmp(name,"J")){
+	    return &sid->J;
+	}
+	else if (!strcmp(name,"Ct")){
+		return &sid->Ct;
+	}
+	else if (!strcmp(name,"Cr")){
+		return &sid->Cr;
+	}
+	else if (!strcmp(name,"Me")){
+		return &sid->Me;
+	}
+	else if (!strcmp(name,"Gr")){
+		return &sid->Gr;	
+	}
+	else if (!strcmp(name,"Ge")){
+		return &sid->Ge;
+	}
+	else if (!strcmp(name,"Oe")){
+		return &sid->Oe;
+	}
+	else if (!strcmp(name,"ksigma")){
+		return &sid->ksigma;
+	}
+	else if (!strcmp(name,"Ke")){
+		return &sid->Ke;
+	}
+	else if (!strcmp(name,"De")){
+		return &sid->De;
+	}
+	else{
+	ModelicaFormatMessage("getTaylorByName: the given name is not defined: %s\n",name);
+	return &sid->mdCM;
+	}
+}
+
+taylor* getNodeTaylorByName(node* node, const char* name)
+{
+	//ModelicaFormatMessage("getNodeTaylorByName %s\n",name);
+	if(!strcmp(name,"origin")){
+		return &node->orig;
+	}
+	else if (!strcmp(name,"phi")){
+	    return &node->phi;
+	}
+	else if (!strcmp(name,"psi")){
+		return &node->psi;
+	}
+	else if (!strcmp(name,"AP")){
+		return &node->AP;
+	}
+	else{
+	ModelicaFormatMessage("getNodeTaylorByName: the given name is not defined: %s\n",name);
+	return &node->orig;
+	}
+}
+
+//M0 for modal objects
+void getM0(void* p_eo, const char* taylorName, double* m0, size_t nr, size_t nc){
+
+	extObjSID* extObj = (extObjSID*)p_eo;
+	taylor* t = getTaylorByName((extObj->sid), taylorName);
+	ModelicaFormatMessage("getM0 %s [%d, %d]  at %p\n",taylorName,nr,nc,t);
+
+	if(nr!=t->nrow || nc!=t->ncol){
+		ModelicaFormatMessage(" getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d] %p\n",taylorName, nr, nc, t->nrow,t->ncol,(void*)t);
+	}
+	else{
+	  //memcpy(m0,t->M0,sizeof(double)*nr*nc);
+	}
+}
+//M1 for modal objects
+void getM1(void* p_eo, const char* taylorName, double* m1, size_t nr, size_t nq, size_t nc){
+	extObjSID* extObj = (extObjSID*)p_eo;
+	ModelicaFormatMessage("getM1 %s [%d, %d,  %d]\n",taylorName,nr,nq,nc);
+	taylor* t = getTaylorByName((extObj->sid), taylorName);
+
+	if(nr!=t->nrow || nc!=t->ncol || nq!=t->nq){
+		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t->nrow,t->nq,t->ncol);
+	}
+	else{
+	  memcpy(m1,t->M1,sizeof(double)*nr*nc*nq);
+	}
+}
+
+//M0 for node object
+void getM0Node(void* p_eo, const char* taylorName, int nodeIdx, double* m0, size_t nr, size_t nc){
+
+	ModelicaFormatMessage("getM0Node: Get  for node %s [%d]\n",taylorName,nodeIdx);
+
+	extObjSID* extObj = (extObjSID*)p_eo;
+	if (nodeIdx >extObj->sid->numNodes){
+		ModelicaFormatMessage(" getM0Node: the given nodeidx  [%d] is bigger than the number of nodes [%d]\n", nodeIdx, extObj->sid->numNodes);
+	}
+
+	node n = extObj->sid->nodes[nodeIdx-1];
+	
+	taylor* t = getNodeTaylorByName(&n, taylorName);
+
+	if(nr!=t->nrow || nc!=t->ncol){
+		ModelicaFormatMessage(" getM0Node: the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n", nr, nc, t->nrow,t->ncol);
+	}
+	else{
+	  memcpy(m0,t->M0,sizeof(double)*nr*nc);
+	}
+	
+}
+//mdCM
+void getM1Node(void* p_eo, const char* taylorName, int nodeIdx, double* m1, size_t nr, size_t nq, size_t nc){
+
+	extObjSID* extObj = (extObjSID*)p_eo;
+	if (nodeIdx > extObj->sid->numNodes){
+		ModelicaFormatMessage(" getM0Node: the given nodeidx  [%d] is bigger than the number of nodes [%d]\n", nodeIdx, extObj->sid->numNodes);
+	}
+
+	node n = extObj->sid->nodes[nodeIdx-1];
+	taylor* t = getNodeTaylorByName(&n, taylorName);
+			
+	if(nr!=t->nrow || nc!=t->ncol || nq!=t->nq){
+		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t->nrow,t->nq,t->ncol);
+	}
+	else{
+	  memcpy(m1,t->M1,sizeof(double)*nr*nc*nq);
+	}
+
+}
+
 
 //origin-taylor
 //=================================
