@@ -15,6 +15,18 @@ package EMBSlib
     annotation (Diagram(graphics));
   end EMBS_bodyExample;
 
+  model testSIDFile
+
+    parameter String fileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+    parameter Integer n = size(nodeLst,1);
+    parameter Integer[:] nodeLst = {1,2,12,26,78,84,107,143,149};
+    parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+    EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
+    parameter Integer numNodes = EMBSlib.ExternalFunctions_C.getNumberOfNodes(sid);
+    annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+          coordinateSystem(preserveAspectRatio=false)));
+  end testSIDFile;
+
   package Components
     model EMBS_Body
 
@@ -248,6 +260,168 @@ package EMBSlib
 
   end SID_Data;
 
+  class SID_File
+    extends ExternalObject;
+
+    function constructor
+      input String fileName;
+      output SID_File sid;
+      external "C" sid = SIDFileConstructor_C(fileName)
+      annotation(Include="#include \"ReadSID_C.h\"");
+
+    end constructor;
+
+    function destructor
+      input SID_File sid;
+      external "C" SIDFileDestructor_C(sid)
+      annotation(Include="#include \"ReadSID_C.h\"");
+    end destructor;
+
+  end SID_File;
+
+  package ExternalFunctions_C
+    function getNumberOfNodes
+      input EMBSlib.SID_File sid;
+      output Integer numNodes;
+      external "C" numNodes = getNumberOfNodes(sid)
+        annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getNumberOfNodes;
+
+    function getNumberOfModes
+      input EMBSlib.SID_File sid;
+      output Integer numNodes;
+      external "C" numNodes = getNumberOfModes(sid)
+        annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getNumberOfModes;
+    //Origin Taylor============================================
+    //=========================================================
+
+    //Phi Taylor============================================
+    //=========================================================
+
+        //Psi Taylor============================================
+    //=========================================================
+
+    //AP Taylor================================================
+    //=========================================================
+
+    //remaining Taylor================================================
+    //=========================================================
+
+    pure function getTaylorOrder
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer order;
+    external"C" order = getTaylorOrder(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorOrder;
+
+    function getTaylorNrow
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer nrow;
+    external"C" nrow = getTaylorNrow(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorNrow;
+
+    function getTaylorNcol
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer ncol;
+    external"C" ncol = getTaylorNcol(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorNcol;
+
+    function getTaylorNq
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer nq;
+    external"C" nq = getTaylorNq(sid, tName)    annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorNq;
+
+    function getTaylorNqn
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer nqn;
+    external"C" nqn = getTaylorNqn(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorNqn;
+
+    function getTaylorStructure
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output Integer nqn;
+    external"C" nqn = getTaylorStructure(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorStructure;
+
+    function getTaylorM0
+      input EMBSlib.SID_File sid;
+      input String tName;
+      input Integer r;
+      input Integer c;
+      input Integer dimR;
+      input Integer dimC;
+      output Real value;
+      external "C" value = getTaylorM0(sid,tName,r,c, dimR, dimC)    annotation(Include="#include \"ReadSID_C.h\"");
+
+    end getTaylorM0;
+
+      function getTaylorM1
+      input EMBSlib.SID_File sid;
+      input String tName;
+      input Integer r;
+      input Integer q;
+      input Integer c;
+      input Integer dimR;
+      input Integer dimQ;
+      input Integer dimC;
+      output Real value;
+      external "C" value = getTaylorM1(sid,tName,r,q,c, dimR,dimQ, dimC)    annotation(Include="#include \"ReadSID_C.h\"");
+
+      end getTaylorM1;
+
+      function getTaylor
+      input EMBSlib.SID_File sid;
+      input String tName;
+      output EMBSlib.Types.Taylor taylor;
+      algorithm
+      taylor.order := EMBSlib.ExternalFunctions.getTaylorOrder(sid, tName)
+                                                                        annotation(Evaluate=true);
+      taylor.nrow := EMBSlib.ExternalFunctions.getTaylorNrow(sid, tName)
+                                                                      annotation(Evaluate=true);
+      taylor.ncol := EMBSlib.ExternalFunctions.getTaylorNcol(sid, tName)
+                                                                      annotation(Evaluate=true);
+      taylor.nq := EMBSlib.ExternalFunctions.getTaylorNq(sid, tName)
+                                                                  annotation(Evaluate=true);
+      taylor.nqn := EMBSlib.ExternalFunctions.getTaylorNqn(sid, tName)
+                                                                    annotation(Evaluate=true);
+
+      taylor.structure := EMBSlib.ExternalFunctions.getTaylorStructure(sid,
+        tName)                                                                  annotation(Evaluate=true);
+      for
+         r0 in (1:taylor.nrow) loop
+       for c0 in (1:taylor.ncol) loop
+           taylor.M0[r0,c0] := EMBSlib.ExternalFunctions.getTaylorM0(sid, tName,r0,c0,taylor.nrow,taylor.ncol);
+        end for;
+      end for;
+
+      for
+       r1 in (1:taylor.nrow) loop
+        for
+         q1 in (1:taylor.nq) loop
+       for c1 in (1:taylor.ncol) loop
+           taylor.M1[r1,q1,c1] := EMBSlib.ExternalFunctions.getTaylorM1(sid, tName,r1,q1,c1,taylor.nrow,taylor.nq, taylor.ncol);
+          end for;
+        end for;
+      end for;
+      end getTaylor;
+
+  end ExternalFunctions_C;
+
   package ExternalFunctions
     function getNumberOfNodes
       input EMBSlib.SID_Data sid;
@@ -267,359 +441,15 @@ package EMBSlib
 
     //Origin Taylor============================================
     //=========================================================
-    function getOriginOrder
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getOriginOrder(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getOriginOrder;
-
-      function getOriginNRows
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numRows;
-      external "C" numRows = getOriginNRows(sid, nodeIdx)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getOriginNRows;
-
-    function getOriginNCols
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numCols;
-    external"C" numCols = getOriginNCols(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getOriginNCols;
-
-    function getOriginNq
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getOriginNq(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getOriginNq;
-
-      function getOriginNqn
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getOriginNqn(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getOriginNqn;
-
-     function getOriginStructure
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getOriginStructure(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-     end getOriginStructure;
-
-      function getM0ForNode
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer numRows;
-      input Integer numCols;
-      output Real[numRows, numCols] M0;
-      external "C" getM0ArrforNode(sid, nodeIdx, M0)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getM0ForNode;
-
-    function getOriginM0
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getOriginM0(sid,nodeIdx,r,c, dimR, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getOriginM0;
-
-      function getOriginM1
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer q;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimQ;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getOriginM1(sid,nodeIdx,r,q,c, dimR,dimQ, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getOriginM1;
 
     //Phi Taylor============================================
     //=========================================================
-    function getPhiOrder
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPhiOrder(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPhiOrder;
-
-      function getPhiNRows
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numRows;
-      external "C" numRows = getPhiNRows(sid, nodeIdx)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPhiNRows;
-
-    function getPhiNCols
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numCols;
-    external"C" numCols = getPhiNCols(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPhiNCols;
-
-    function getPhiNq
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPhiNq(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPhiNq;
-
-      function getPhiNqn
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPhiNqn(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPhiNqn;
-
-     function getPhiStructure
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPhiStructure(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-     end getPhiStructure;
-
-    function getPhiM0
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getPhiM0(sid,nodeIdx,r,c, dimR, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPhiM0;
-
-      function getPhiM1
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer q;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimQ;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getPhiM1(sid,nodeIdx,r,q,c, dimR,dimQ, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPhiM1;
 
         //Psi Taylor============================================
     //=========================================================
-    function getPsiOrder
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPsiOrder(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPsiOrder;
-
-      function getPsiNRows
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numRows;
-      external "C" numRows = getPsiNRows(sid, nodeIdx)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPsiNRows;
-
-    function getPsiNCols
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numCols;
-    external"C" numCols = getPsiNCols(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPsiNCols;
-
-    function getPsiNq
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPsiNq(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPsiNq;
-
-      function getPsiNqn
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPsiNqn(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPsiNqn;
-
-     function getPsiStructure
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getPsiStructure(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-     end getPsiStructure;
-
-    function getPsiM0
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getPsiM0(sid,nodeIdx,r,c, dimR, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getPsiM0;
-
-      function getPsiM1
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer q;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimQ;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getPsiM1(sid,nodeIdx,r,q,c, dimR,dimQ, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getPsiM1;
 
     //AP Taylor================================================
     //=========================================================
-
-    function getAPOrder
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getAPOrder(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getAPOrder;
-
-      function getAPNRows
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numRows;
-      external "C" numRows = getAPNRows(sid, nodeIdx)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getAPNRows;
-
-    function getAPNCols
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer numCols;
-    external"C" numCols = getAPNCols(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getAPNCols;
-
-    function getAPNq
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getAPNq(sid, nodeIdx) annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-    end getAPNq;
-
-      function getAPNqn
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getAPNqn(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getAPNqn;
-
-     function getAPStructure
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      output Integer order;
-    external"C" order = getAPStructure(sid, nodeIdx)
-        annotation (
-          Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-     end getAPStructure;
-
-      function getAPM0
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getAPM0(sid,nodeIdx,r,c, dimR, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getAPM0;
-
-      function getAPM1
-      input EMBSlib.SID_Data sid;
-      input Integer nodeIdx;
-      input Integer r;
-      input Integer q;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimQ;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getAPM1(sid,nodeIdx,r,q,c, dimR,dimQ, dimC)
-      annotation(Include="#include \"SID_Data.h\"",
-                  Library={"readSIDlib"});
-      end getAPM1;
 
     //remaining Taylor================================================
     //=========================================================
