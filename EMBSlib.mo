@@ -44,6 +44,14 @@ package EMBSlib
     parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
     parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
     parameter Modelica.SIunits.Mass mass = EMBSlib.ExternalFunctions_C.getMass(sid) annotation(Evaluate=true);
+    inner Modelica.Mechanics.MultiBody.World world
+      annotation (Placement(transformation(extent={{-134,-6},{-114,14}})));
+    Modelica.Blocks.Sources.RealExpression realExpression[3](y={0,0,0})
+      annotation (Placement(transformation(extent={{-144,36},{-124,56}})));
+
+    parameter Real origin_M0[3,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",4, 3, 1) annotation (Evaluate=true);
+
+
     annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
           coordinateSystem(preserveAspectRatio=false)));
   end testSIDFile;
@@ -63,7 +71,8 @@ package EMBSlib
           Modelica.SIunits.Velocity v[3] = der(r_0) "velocity of frame of reference";
           Modelica.SIunits.Acceleration a[3] = der(v) "acceleration of frame of reference";
 
-          Modelica.SIunits.AngularVelocity omega[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
+          Modelica.SIunits.AngularVelocity phi[3];
+          Modelica.SIunits.AngularVelocity omega[3] =  der(phi);// = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
           Modelica.SIunits.AngularAcceleration omega_d[3] = der(omega);
           Modelica.SIunits.AngularVelocity omega_tilde[3,3] = {{0, -omega[3],omega[2]},  {omega[3],0,-omega[1]}, {-omega[2],omega[1],0}};
 
@@ -163,18 +172,17 @@ package EMBSlib
             annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
 
     protected
-          parameter Integer nq = numModes;
+       parameter Integer nq = numModes;
 
     equation
-
-         q = {0,0,0};
+         //q = {0,0,0};
          //kinematic equations
-         //M_t+k_omega_t = hd_t;
-         //M_r+k_omega_r = hd_r;
-         //M_q + k_omega_q + k_q = hd_e;
+         M_t+k_omega_t = hd_t;
+         M_r+k_omega_r = hd_r;
+         M_q + k_omega_q + k_q = hd_e;
 
 
-         r_0 = frame_ref.r_0;
+         //r_0 = frame_ref.r_0;
          //frame_ref.f = {0,0,0};
          //frame_ref.t = {0,0,0};
 
