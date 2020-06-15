@@ -2,17 +2,38 @@ within ;
 package EMBSlib
 
   model EMBS_bodyExample
-    Components.EMBS_Body eMBS_Body
-      annotation (Placement(transformation(extent={{-60,0},{-40,20}})));
-    inner Modelica.Mechanics.MultiBody.World world
-      annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
+      Components.EMBS_Body eMBS_Body
+        annotation (Placement(transformation(extent={{-40,0},{-20,20}})));
+
+      inner Modelica.Mechanics.MultiBody.World world
+        annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
+      Modelica.Mechanics.MultiBody.Forces.WorldForce worldForce(N_to_m=10)
+        annotation (Placement(transformation(extent={{-20,-58},{0,-38}},
+              rotation=0)));
+      Modelica.Blocks.Sources.Sine sine(
+        freqHz=4,
+        phase=1.7,
+        amplitude=0,
+        offset=10)    annotation (Placement(transformation(extent={{-80,-48},{-60,
+                -28}},     rotation=0)));
+      Modelica.Blocks.Sources.Constant const(k=0)
+        annotation (Placement(transformation(extent={{-80,-78},{-60,-58}},
+              rotation=0)));
   equation
-    connect(eMBS_Body.frame_a, world.frame_b) annotation (Line(
-        points={{-60,10.2},{-60,10},{-80,10}},
-        color={95,95,95},
-        thickness=0.5,
-        smooth=Smooth.None));
-    annotation (Diagram(graphics));
+      connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
+          points={{-40,10},{-80,10}},
+          color={95,95,95},
+          thickness=0.5));
+      connect(sine.y,worldForce. force[3]) annotation (Line(points={{-59,-38},{
+            -40,-38},{-40,-46.6667},{-22,-46.6667}},   color={0,0,127}));
+      connect(const.y,worldForce. force[1]) annotation (Line(points={{-59,-68},
+            {-40,-68},{-40,-49.3333},{-22,-49.3333}},   color={0,0,127}));
+      connect(const.y,worldForce. force[2]) annotation (Line(points={{-59,-68},{
+              -40,-68},{-40,-48},{-22,-48}},  color={0,0,127}));
+      connect(worldForce.frame_b, eMBS_Body.frame_node[9]) annotation (Line(
+          points={{0,-48},{22,-48},{22,-50},{42,-50},{42,10},{-20,10}},
+          color={95,95,95},
+          thickness=0.5));
   end EMBS_bodyExample;
 
   model testSIDFile
@@ -21,32 +42,155 @@ package EMBSlib
     parameter Integer n = size(nodeLst,1);
     parameter Integer[:] nodeLst = {1,2,12,26,78,84,107,143,149};
     parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
-    EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
-    parameter Integer numNodes = EMBSlib.ExternalFunctions_C.getNumberOfNodes(sid);
+    parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
+    parameter Modelica.SIunits.Mass mass = EMBSlib.ExternalFunctions_C.getMass(sid) annotation(Evaluate=true);
     annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
           coordinateSystem(preserveAspectRatio=false)));
   end testSIDFile;
 
   package Components
     model EMBS_Body
+          parameter Integer numNodes = 9;
+          parameter Integer numModes = 3 "the number of modes given in the SID file";
+          parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+          constant Integer nr0 = 3 "dimension in space";
 
-      parameter String fileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
-      parameter Integer n = size(nodeLst,1);
-      parameter Integer[:] nodeLst = {1,2,12,26,78,84,107,143,149};
+          Real q[nq] "modal coordinates";
+          Real qd[nq] = der(q);
+          Real qdd[nq] = der(qd);
 
-      Nodes nodes(numNodes=n, SIDfileName = fileName)
-                  annotation (Placement(transformation(extent={{0,40},{20,60}})));
+          Modelica.SIunits.Position r_0[3](start={0,0,0}) "position of frame of reference";
+          Modelica.SIunits.Velocity v[3] = der(r_0) "velocity of frame of reference";
+          Modelica.SIunits.Acceleration a[3] = der(v) "acceleration of frame of reference";
 
-    //Real rShapes[n,3];
-     // Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape[n](r= rShapes,    shapeType="sphere",    length=0.1,    width=0.1,    height=0.1)    annotation (Placement(transformation(extent={{80,60},{100,80}})));
-      Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a    annotation (Placement(transformation(extent={{-116,-14},{-84,18}})));
-      //Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[n]    annotation (Placement(transformation(extent={{84,-14},{116,18}})));
-    algorithm
-        for i in 1:n loop
-        //  rShapes[i,1] := nodes.origin[i].M0[1,1];
-        //  rShapes[i,2] := nodes.origin[i].M0[2,1];
-        //  rShapes[i,3] := nodes.origin[i].M0[3,1];
-        end for;
+          Modelica.SIunits.AngularVelocity omega[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
+          Modelica.SIunits.AngularAcceleration omega_d[3] = der(omega);
+          Modelica.SIunits.AngularVelocity omega_tilde[3,3] = {{0, -omega[3],omega[2]},  {omega[3],0,-omega[1]}, {-omega[2],omega[1],0}};
+
+
+          //SID File Data
+          parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
+          //mass
+          parameter Modelica.SIunits.Mass mass = EMBSlib.ExternalFunctions_C.getMass(sid) annotation(Evaluate=true);
+          parameter Modelica.SIunits.Mass mI[nr0,nr0] = identity(nr0)*mass;
+
+          //mdCM
+          parameter Real mdCM_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0( sid, "mdCM", nr0, 1) annotation (Evaluate=true);
+          parameter Real mdCM_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1(sid,   "mdCM", nr0, nq, 1) annotation (Evaluate=true);
+          Real mdCM [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,mdCM_M0,mdCM_M1,q);
+          Real cm[nr0,1] = mdCM/mass "centre of mass";
+          Real mdCM_tilde[nr0,nr0] = {{0, -mdCM[3,1],mdCM[2,1]},  {mdCM[3,1],0,-mdCM[1,1]}, {-mdCM[2,1],mdCM[1,1],0}};
+
+          //J, is always in a special structure in [6,1]
+          constant Integer nJ = 6 "J is always a vektor of size 6";
+          parameter Real J_M0[nJ,1]= EMBSlib.ExternalFunctions_C.getM0( sid, "J", nJ, 1) annotation (Evaluate=true);
+          parameter Real J_M1[nJ,nq,1]= EMBSlib.ExternalFunctions_C.getM1( sid, "J", nJ, nq, 1) annotation (Evaluate=true);
+          Real J_ [nJ,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nJ,nq,1,J_M0,J_M1,q);
+          Real J [nr0,nr0] = {{J_[1,1],J_[4,1],J_[5,1]},{J_[4,1],J_[2,1],J_[6,1]},{J_[5,1],J_[6,1],J_[3,1]}};
+
+          //Ct
+          parameter Real Ct_M0[nq,nr0] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ct", nq, nr0) annotation (Evaluate=true);
+          parameter Real Ct_M1[nq,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1( sid, "Ct", nq, nq, nr0) annotation (Evaluate=true);
+          Real Ct [nq,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Ct_M0,Ct_M1,q);
+
+
+          //Cr
+          parameter Real Cr_M0[nq,nr0] = EMBSlib.ExternalFunctions_C.getM0( sid, "Cr", nq, nr0) annotation (Evaluate=true);
+          parameter Real Cr_M1[nq,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1( sid, "Cr", nq,  nq, nr0) annotation (Evaluate=true);
+          Real Cr [nq,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Cr_M0,Cr_M1,q);
+
+          //Gr
+          parameter Real Gr_ [nr0,nr0*nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Gr", nq, nr0*nq) annotation (Evaluate=true);
+          Real Gr [nr0,nr0] = EMBSlib.MatrixFunctions.getGrMatrix(nr0,nq,nr0*nq,Gr_,qd);//! this is the sum of the product of the GR matrices with the respective qd_i
+
+          //Ge
+          parameter Real Ge_ [nq,nr0*nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ge", nq, nr0*nq) annotation (Evaluate=true);
+          Real Ge [nq,nr0] = EMBSlib.MatrixFunctions.getGrMatrix(nq,nq,nr0*nq,Ge_,qd);//! this is the sum of the product of the Ge matrices with the respective qd_i
+
+          //Me
+          parameter Real Me[nq,nq] = identity(nq) annotation (Evaluate=true);
+
+          //Oe
+          constant Integer nOe = 6 "its always 6";
+          parameter Real Oe_M0[nq,nOe] = EMBSlib.ExternalFunctions_C.getM0( sid, "Oe", nq, nOe) annotation (Evaluate=true);
+          parameter Real Oe_M1[nq,nq,nOe] = EMBSlib.ExternalFunctions_C.getM1( sid, "Oe", nq,  nq, nOe) annotation (Evaluate=true);
+          Real Oe_[nq,nOe] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,6,Oe_M0,Oe_M1,q);//wallrapp says on page 12 table 1 there is acompact form, not used here?!?!?!?
+
+          //OMega
+          Real OMega[nOe] = {omega[1]^2, omega[2]^2, omega[3]^2, omega[1]*omega[2], omega[2]*omega[3], omega[1]*omega[3]};
+
+          //ksigma
+          parameter Real ksigma[nq,1] = zeros(nq,1) annotation (Evaluate=true); //!! For simplicity....change this
+
+          //Ke
+          parameter Real Ke[nq,nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ke", nq, nq) annotation (Evaluate=true);
+
+
+           //De
+          parameter Real De[nq,nq] =  EMBSlib.ExternalFunctions_C.getM0( sid, "De", nq, nq) annotation (Evaluate=true);
+
+
+          // kinematic equations --> translation
+          Real M_t[3] = mI*a + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
+          Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
+          Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
+          //Real f_comp[3] = M_t+k_omega_t;
+          Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:numNodes);
+          //Real residual_t[3] = f_comp - hd_t - frame_ref.f;  // this should be zero
+
+          // kinematic equations --> rotation
+          Real M_r[3] = mdCM_tilde*a + J* omega_d + transpose(Cr) * qdd;
+          Real k_omega_r[3] = Gr* omega_d + omega_tilde*J*omega;
+          //Real t_comp[3] = M_r+k_omega_r;
+          Real hd_r[3] = sum(identity(3)*nodes[i].t for i in 1:numNodes);
+
+          //kinematic equations --> modal
+          Real M_q[3] = Ct*a + Cr* omega_d + Me* qdd;
+          Real k_omega_q[3] =  Ge*omega + Oe_*OMega;
+          Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
+          //Real q_comp[nq] = M_q + k_omega_q + k_q;
+          Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:numNodes);
+
+          Node nodes[numNodes](each sid=sid, each nq=nq, nodeArrayIdx = 1:numNodes) annotation (Placement(transformation(extent={{-10,-4},
+                    {10,16}})));
+
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref
+         annotation (Placement(transformation(extent={{-116,-16},{-84,16}})));
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation (Placement(transformation(extent={{84,-16},
+                    {116,16}})));
+
+          Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
+            annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
+
+    protected
+          parameter Integer nq = numModes;
+
+    equation
+
+         q = {0,0,0};
+         //kinematic equations
+         //M_t+k_omega_t = hd_t;
+         //M_r+k_omega_r = hd_r;
+         //M_q + k_omega_q + k_q = hd_e;
+
+
+         r_0 = frame_ref.r_0;
+         //frame_ref.f = {0,0,0};
+         //frame_ref.t = {0,0,0};
+
+         for i in 1:numNodes loop
+          connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
+          connect(nodes[i].frame_a, frame_ref) annotation (Line(
+              points={{-10,0.4},{-50,0.4},{-50,0},{-100,0}},
+              color={95,95,95},
+              thickness=0.5));
+          connect(nodes[i].frame_b, frame_node[i]) annotation (Line(
+              points={{10,0.2},{59,0.2},{59,0},{100,0}},
+              color={95,95,95},
+              thickness=0.5));
+         end for;
+
+            annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
     end EMBS_Body;
 
     model Nodes
@@ -227,15 +371,74 @@ package EMBSlib
     end Nodes;
 
     model Node
-      parameter Integer numNodes = 9;
-      parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
-      EMBSlib.Types.TaylorData J=EMBSlib.Functions.getTaylor(sid, "J");
-      EMBSlib.SID_Data sid = EMBSlib.SID_Data(SIDfileName) annotation (Evaluate=true);
+          parameter EMBSlib.SID_File sid;
+          parameter Integer nq = 3;
+          parameter Integer nodeArrayIdx = 1;
+          parameter Integer nr0 = 3;
 
-    algorithm
-      annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
-            coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
-                100,100}}), graphics));
+          //origin
+          parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
+          parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
+          Real origin [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
+
+          //psi
+          parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
+          parameter Real psi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
+          Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
+
+          //phi
+          parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
+          parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
+          Real phi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
+
+          Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"
+            annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
+            annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
+          Modelica.SIunits.Force f[nr0] = frame_b.f "external force applied";
+
+            Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
+
+
+          Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f;
+          Modelica.SIunits.Force hdt_i[nq] = f;
+
+
+          parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
+            "Diameter of sphere" annotation (Dialog(
+              tab="Animation",
+              group="if animation = true",
+              enable=animation));
+                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(r = frame_b.r_0- {1,0,0}*sphereDiameter/2,
+         shapeType="sphere",
+         length=0.1,
+         width=0.1,
+         height=0.1,
+         lengthDirection={1,0,0})
+         annotation (Placement(transformation(extent={{80,60},{100,80}})));
+
+
+
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b
+            annotation (Placement(transformation(extent={{84,-74},{116,-42}})));
+    protected
+          outer Modelica.Mechanics.MultiBody.World world
+            annotation (Placement(transformation(extent={{-98,60},{-78,80}})));
+    equation
+          Connections.branch(frame_a.R, frame_b.R);
+          assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
+            "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
+
+          frame_b.r_0 = frame_a.r_0 + origin[:,1];
+          frame_b.R = frame_a.R;
+
+          /* Force and torque balance */
+          zeros(3) = frame_a.f + frame_b.f;
+          zeros(3) = frame_a.t + frame_b.t;
+          //connect(frame_a, frame_b) annotation (Line(      points={{-100,-56},{-2,-56},{-2,-58},{100,-58}},      color={95,95,95},      thickness=0.5));
+          annotation (Icon(coordinateSystem(preserveAspectRatio=false)), Diagram(
+                coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
+                    100,100}})));
     end Node;
   end Components;
 
@@ -280,145 +483,57 @@ package EMBSlib
   end SID_File;
 
   package ExternalFunctions_C
-    function getNumberOfNodes
+     function getMass
       input EMBSlib.SID_File sid;
-      output Integer numNodes;
-      external "C" numNodes = getNumberOfNodes(sid)
+      output Real mass;
+    external"C" mass = getMass(sid)
+              annotation(Include="#include \"ReadSID_C.h\"");
+     end getMass;
+
+      function getM0
+        input EMBSlib.SID_File sid;
+        input String taylorName;
+        input Integer nr;
+        input Integer nc;
+        output Real[nr,nc] m0;
+        external "C" getM0(sid,taylorName,m0,nr,nc)
+              annotation(Include="#include \"ReadSID_C.h\"");
+      end getM0;
+
+      function getM1
+        input EMBSlib.SID_File sid;
+        input String taylorName;
+        input Integer nr;
+        input Integer nq;
+        input Integer nc;
+        output Real[nr,nq,nc] m1;
+        external "C" getM1(sid,taylorName,m1,nr,nq,nc)
+              annotation(Include="#include \"ReadSID_C.h\"");
+      end getM1;
+
+      function getM0Node
+        input EMBSlib.SID_File sid;
+        input String taylorName;
+        input Integer nodeIdx;
+        input Integer nr;
+        input Integer nc;
+        output Real[nr,nc] m0;
+
+        external "C" getM0Node(sid,taylorName,nodeIdx,m0,nr,nc)
+              annotation(Include="#include \"ReadSID_C.h\"");
+      end getM0Node;
+
+      function getM1Node
+        input EMBSlib.SID_File sid;
+        input String taylorName;
+        input Integer nodeIdx;
+        input Integer nr;
+        input Integer nq;
+        input Integer nc;
+        output Real[nr,nq,nc] m1;
+        external "C" getM1Node(sid,taylorName,nodeIdx,m1,nr,nq,nc)
         annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getNumberOfNodes;
-
-    function getNumberOfModes
-      input EMBSlib.SID_File sid;
-      output Integer numNodes;
-      external "C" numNodes = getNumberOfModes(sid)
-        annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getNumberOfModes;
-    //Origin Taylor============================================
-    //=========================================================
-
-    //Phi Taylor============================================
-    //=========================================================
-
-        //Psi Taylor============================================
-    //=========================================================
-
-    //AP Taylor================================================
-    //=========================================================
-
-    //remaining Taylor================================================
-    //=========================================================
-
-    pure function getTaylorOrder
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer order;
-    external"C" order = getTaylorOrder(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorOrder;
-
-    function getTaylorNrow
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer nrow;
-    external"C" nrow = getTaylorNrow(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorNrow;
-
-    function getTaylorNcol
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer ncol;
-    external"C" ncol = getTaylorNcol(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorNcol;
-
-    function getTaylorNq
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer nq;
-    external"C" nq = getTaylorNq(sid, tName)    annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorNq;
-
-    function getTaylorNqn
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer nqn;
-    external"C" nqn = getTaylorNqn(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorNqn;
-
-    function getTaylorStructure
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output Integer nqn;
-    external"C" nqn = getTaylorStructure(sid, tName)     annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorStructure;
-
-    function getTaylorM0
-      input EMBSlib.SID_File sid;
-      input String tName;
-      input Integer r;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getTaylorM0(sid,tName,r,c, dimR, dimC)    annotation(Include="#include \"ReadSID_C.h\"");
-
-    end getTaylorM0;
-
-      function getTaylorM1
-      input EMBSlib.SID_File sid;
-      input String tName;
-      input Integer r;
-      input Integer q;
-      input Integer c;
-      input Integer dimR;
-      input Integer dimQ;
-      input Integer dimC;
-      output Real value;
-      external "C" value = getTaylorM1(sid,tName,r,q,c, dimR,dimQ, dimC)    annotation(Include="#include \"ReadSID_C.h\"");
-
-      end getTaylorM1;
-
-      function getTaylor
-      input EMBSlib.SID_File sid;
-      input String tName;
-      output EMBSlib.Types.Taylor taylor;
-      algorithm
-      taylor.order := EMBSlib.ExternalFunctions.getTaylorOrder(sid, tName)
-                                                                        annotation(Evaluate=true);
-      taylor.nrow := EMBSlib.ExternalFunctions.getTaylorNrow(sid, tName)
-                                                                      annotation(Evaluate=true);
-      taylor.ncol := EMBSlib.ExternalFunctions.getTaylorNcol(sid, tName)
-                                                                      annotation(Evaluate=true);
-      taylor.nq := EMBSlib.ExternalFunctions.getTaylorNq(sid, tName)
-                                                                  annotation(Evaluate=true);
-      taylor.nqn := EMBSlib.ExternalFunctions.getTaylorNqn(sid, tName)
-                                                                    annotation(Evaluate=true);
-
-      taylor.structure := EMBSlib.ExternalFunctions.getTaylorStructure(sid,
-        tName)                                                                  annotation(Evaluate=true);
-      for
-         r0 in (1:taylor.nrow) loop
-       for c0 in (1:taylor.ncol) loop
-           taylor.M0[r0,c0] := EMBSlib.ExternalFunctions.getTaylorM0(sid, tName,r0,c0,taylor.nrow,taylor.ncol);
-        end for;
-      end for;
-
-      for
-       r1 in (1:taylor.nrow) loop
-        for
-         q1 in (1:taylor.nq) loop
-       for c1 in (1:taylor.ncol) loop
-           taylor.M1[r1,q1,c1] := EMBSlib.ExternalFunctions.getTaylorM1(sid, tName,r1,q1,c1,taylor.nrow,taylor.nq, taylor.ncol);
-          end for;
-        end for;
-      end for;
-      end getTaylor;
+      end getM1Node;
 
   end ExternalFunctions_C;
 
@@ -1954,5 +2069,47 @@ Results of the model SimplePlate
         file="modelica://FlexibleBodies/Resources/Scripts/PlotSimplePlate.mos"
           "Plot Results"));
   end SimplePlate2;
+
+  package MatrixFunctions
+      function getTaylorFunction
+            input Integer nr;
+            input Integer nq;
+            input Integer nc;
+            input Real[nr,nc] M0;
+            input Real[nr,nq,nc] M1;
+            input Real[nq] q;
+            output Real[nr,nc] M;
+    protected
+            Real[nr,nc] aux;
+      algorithm
+            M := zeros(nr,nc);
+            for i in 1:nq loop
+              aux := M1[:,i,:]*q[i];
+              M := M+aux;
+            end for;
+            M := M0 +M;
+      end getTaylorFunction;
+
+          function getGrMatrix
+            input Integer nr;//(for Gr=3 for Ge=nq)
+            input Integer nq;//nq
+            input Integer nc;//3*nq
+            input Real[nr,nc] Min;
+            input Real[nq] q;
+            output Real[nq, 3] Mout;
+    protected
+            Real[3,3] aux;
+            Integer c=1;
+          algorithm
+            Mout := zeros(3,3);
+            for i in 1:nq loop
+              c :=(i - 1)*3;//column index
+              aux[:,1] := Min[:,c+1];
+              aux[:,2] := Min[:,c+2];
+              aux[:,3] := Min[:,c+3];
+              Mout := Mout+aux*q[i];
+            end for;
+          end getGrMatrix;
+  end MatrixFunctions;
   annotation (uses(Modelica(version="3.2.3")));
 end EMBSlib;
