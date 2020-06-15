@@ -167,16 +167,24 @@ package EMBSlib
           Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
             annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
 
-          Real[3] t_rest;
-          Real[3] f_rest;
+          Modelica.SIunits.Torque[3] t_rest;
+          Modelica.SIunits.Force[3] f_rest;
+      Modelica.Mechanics.MultiBody.Forces.WorldForce force
+        annotation (Placement(transformation(extent={{-86,18},{-66,38}})));
+          Modelica.Blocks.Sources.RealExpression f_elast1[nr0](y=f_rest)
+        annotation (Placement(transformation(extent={{-124,16},{-104,36}})));
+      Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
+        annotation (Placement(transformation(extent={{-88,46},{-68,66}})));
+          Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest)
+        annotation (Placement(transformation(extent={{-124,46},{-104,66}})));
     protected
        parameter Integer nq = numModes;
 
     equation
          //q = {0,0,0};
          //kinematic equations
-         M_t +k_omega_t  = hd_t + frame_ref.f+f_rest;
-         M_r+k_omega_r= hd_r + frame_ref.t+t_rest;
+         M_t +k_omega_t  =  -f_rest;
+         M_r+k_omega_r=  -t_rest;
          M_q + k_omega_q + k_q = hd_e;
 
          for i in 1:numNodes loop
@@ -190,7 +198,24 @@ package EMBSlib
               points={{10,0.2},{25,0.2},{25,0},{100,0}},
               color={95,95,95},
               thickness=0.5));
+                connect(nodes[i].frame_a, frame_ref) annotation (Line(
+          points={{-10,0.4},{-32,0.4},{-32,0},{-100,0}},
+          color={95,95,95},
+          thickness=0.5));
          end for;
+
+      connect(force.frame_b, frame_ref) annotation (Line(
+          points={{-66,28},{-64,28},{-64,0},{-100,0}},
+          color={95,95,95},
+          thickness=0.5));
+      connect(f_elast1.y, force.force) annotation (Line(points={{-103,26},{-96,
+              26},{-96,28},{-88,28}}, color={0,0,127}));
+      connect(torque.frame_b, force.frame_b) annotation (Line(
+          points={{-68,56},{-68,28},{-66,28}},
+          color={95,95,95},
+          thickness=0.5));
+      connect(t_elast2.y, torque.torque)
+        annotation (Line(points={{-103,56},{-90,56}}, color={0,0,127}));
 
             annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
     end EMBS_Body;
@@ -1989,9 +2014,9 @@ package EMBSlib
 
       //Verschiebung
       Real u[3]= ModalBody.nBody.u_out[forceNode, :];//forceNode
-      Real orig_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].origin.M0;
-      Real orig_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].origin.M1;
-      Real orig [3,3] = EMBSlib.SID.MatrixFunctions.getTaylorFunction(3,nq,3,orig_M0,orig_M1,q);
+      //Real orig_M0[3,1] = ModalBody.nBody.modal.nodes[forceNode].origin;
+      //Real orig_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].origin;
+      //Real orig [3,1] = EMBSlib.SID.MatrixFunctions.getTaylorFunction(3,nq,1,orig_M0,zeros(3,nq,1),q);
       //phi of force node
       Real phi_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M0;
       Real phi_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M1;
@@ -2068,7 +2093,10 @@ Results of the model SimplePlate
       <br><b>&copy; 2012-2019, DLR Institute of System Dynamics and Control</b></td>
   </tr>
 </table>
-</html>"),   experiment(StopTime=1.01, Tolerance=1e-006),
+</html>"),   experiment(
+        StopTime=20,
+        Tolerance=1e-06,
+        __Dymola_Algorithm="Dassl"),
       experimentSetupOutput,
       Commands(file="modelica://FlexibleBodies/Resources/Scripts/Settings.mos"
           "Settings",
