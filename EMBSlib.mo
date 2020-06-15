@@ -12,7 +12,7 @@ package EMBSlib
               rotation=0)));
       Modelica.Blocks.Sources.Sine sine(
         freqHz=4,
-        phase=1.7,
+      phase=1.7,
         amplitude=0,
         offset=10)    annotation (Placement(transformation(extent={{-80,-48},{-60,
                 -28}},     rotation=0)));
@@ -67,12 +67,11 @@ package EMBSlib
           Real qd[nq] = der(q);
           Real qdd[nq] = der(qd);
 
-          Modelica.SIunits.Position r_0[3](start={0,0,0}) "position of frame of reference";
+          Modelica.SIunits.Position r_0[3](start={0,0,0}) = frame_ref.r_0  "position of frame of reference";
           Modelica.SIunits.Velocity v[3] = der(r_0) "velocity of frame of reference";
           Modelica.SIunits.Acceleration a[3] = der(v) "acceleration of frame of reference";
 
-          Modelica.SIunits.AngularVelocity phi[3];
-          Modelica.SIunits.AngularVelocity omega[3] =  der(phi);// = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
+          Modelica.SIunits.AngularVelocity omega[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
           Modelica.SIunits.AngularAcceleration omega_d[3] = der(omega);
           Modelica.SIunits.AngularVelocity omega_tilde[3,3] = {{0, -omega[3],omega[2]},  {omega[3],0,-omega[1]}, {-omega[2],omega[1],0}};
 
@@ -143,9 +142,7 @@ package EMBSlib
           Real M_t[3] = mI*a + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
           Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
           Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
-          //Real f_comp[3] = M_t+k_omega_t;
           Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:numNodes);
-          //Real residual_t[3] = f_comp - hd_t - frame_ref.f;  // this should be zero
 
           // kinematic equations --> rotation
           Real M_r[3] = mdCM_tilde*a + J* omega_d + transpose(Cr) * qdd;
@@ -157,7 +154,6 @@ package EMBSlib
           Real M_q[3] = Ct*a + Cr* omega_d + Me* qdd;
           Real k_omega_q[3] =  Ge*omega + Oe_*OMega;
           Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
-          //Real q_comp[nq] = M_q + k_omega_q + k_q;
           Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:numNodes);
 
           Node nodes[numNodes](each sid=sid, each nq=nq, nodeArrayIdx = 1:numNodes) annotation (Placement(transformation(extent={{-10,-4},
@@ -171,29 +167,27 @@ package EMBSlib
           Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
             annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
 
+          Real[3] t_rest;
+          Real[3] f_rest;
     protected
        parameter Integer nq = numModes;
 
     equation
          //q = {0,0,0};
          //kinematic equations
-         M_t+k_omega_t = hd_t;
-         M_r+k_omega_r = hd_r;
+         M_t +k_omega_t  = hd_t + frame_ref.f+f_rest;
+         M_r+k_omega_r= hd_r + frame_ref.t+t_rest;
          M_q + k_omega_q + k_q = hd_e;
 
-
-         //r_0 = frame_ref.r_0;
-         //frame_ref.f = {0,0,0};
-         //frame_ref.t = {0,0,0};
-
          for i in 1:numNodes loop
+
           connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
           connect(nodes[i].frame_a, frame_ref) annotation (Line(
               points={{-10,0.4},{-50,0.4},{-50,0},{-100,0}},
               color={95,95,95},
               thickness=0.5));
           connect(nodes[i].frame_b, frame_node[i]) annotation (Line(
-              points={{10,0.2},{59,0.2},{59,0},{100,0}},
+              points={{10,0.2},{25,0.2},{25,0},{100,0}},
               color={95,95,95},
               thickness=0.5));
          end for;
@@ -387,17 +381,20 @@ package EMBSlib
           //origin
           parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
           parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
-          Real origin [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
+          Real origin [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,zeros(nr0,nq,1),q);
 
           //psi
           parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
           parameter Real psi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
           Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
+          Modelica.SIunits.Angle theta [nr0] = psi*q "elastic rotation";
+
 
           //phi
           parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
           parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
           Real phi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
+          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement";
 
           Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"
             annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
@@ -405,11 +402,11 @@ package EMBSlib
             annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
           Modelica.SIunits.Force f[nr0] = frame_b.f "external force applied";
 
-            Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
+          Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
 
 
           Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f;
-          Modelica.SIunits.Force hdt_i[nq] = f;
+          Modelica.SIunits.Torque hdt_i[nr0] = (origin[:,1]+u).*f+t;
 
 
           parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
@@ -437,7 +434,7 @@ package EMBSlib
           assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
             "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
 
-          frame_b.r_0 = frame_a.r_0 + origin[:,1];
+          frame_b.r_0 = frame_a.r_0 + origin[:,1]+u;
           frame_b.R = frame_a.R;
 
           /* Force and torque balance */
@@ -1979,7 +1976,7 @@ package EMBSlib
       Real M_r[3] = mdCM_tilde*r_0_dd + J*phi_dd + transpose(Cr) *q_dd;
       Real k_omega_r[3] = Gr*phi_dd + omega_tilde*J*phi_d;
       Real t_comp[3] = M_r+k_omega_r;
-      Real hd_r[3] = sum(identity(3)*ModalBody.nodes[i].f for i in 1:ModalBody.n_Nodes);
+      Real hd_r[3] = sum(ModalBody.nodes[i].r_0.*ModalBody.nodes[i].f+ModalBody.nodes[i].t for i in 1:ModalBody.n_Nodes);
 
       //kinematic equations --> modal
       Real M_q[3] = Ct*r_0_dd + Cr*phi_dd + Me*q_dd;
@@ -1992,6 +1989,9 @@ package EMBSlib
 
       //Verschiebung
       Real u[3]= ModalBody.nBody.u_out[forceNode, :];//forceNode
+      Real orig_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].origin.M0;
+      Real orig_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].origin.M1;
+      Real orig [3,3] = EMBSlib.SID.MatrixFunctions.getTaylorFunction(3,nq,3,orig_M0,orig_M1,q);
       //phi of force node
       Real phi_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M0;
       Real phi_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M1;
