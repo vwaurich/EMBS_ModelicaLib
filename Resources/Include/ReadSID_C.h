@@ -536,7 +536,7 @@ taylor getTaylorByName(SID_Data* sid, const char* name)
 void getM0(void* p_sid, const char* taylorName, double* m0, size_t nr, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
 	taylor t = getTaylorByName((sid), taylorName);
-	ModelicaFormatMessage("getM0 %s [%d, %d]  at %p\n",taylorName,nr,nc,t);
+	//ModelicaFormatMessage("getM0 %s [%d, %d]  at %p\n",taylorName,nr,nc,t);
 	if(nr!=t.nrow || nc!=t.ncol){
 		ModelicaFormatMessage(" getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
 	}
@@ -547,7 +547,7 @@ void getM0(void* p_sid, const char* taylorName, double* m0, size_t nr, size_t nc
 //M1 for modal objects
 void getM1(void* p_sid, const char* taylorName, double* m1, size_t nr, size_t nq, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
-	ModelicaFormatMessage("getM1 %s [%d, %d,  %d]\n",taylorName,nr,nq,nc);
+	//ModelicaFormatMessage("getM1 %s [%d, %d,  %d]\n",taylorName,nr,nq,nc);
 	taylor t = getTaylorByName((sid), taylorName);
 
 	if(nr!=t.nrow || nc!=t.ncol || nq!=t.nq){
