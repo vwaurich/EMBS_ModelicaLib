@@ -7,12 +7,29 @@ package EMBSlib
     Components.EMBS_Body eMBS_Body
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
 
-    inner Modelica.Mechanics.MultiBody.World world(n(displayUnit="1") = {0,0,-1})
+    inner Modelica.Mechanics.MultiBody.World world(g=9.81, n(displayUnit="1")
+         = {0,0,-1})
         annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
 
+    Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
+      annotation (Placement(transformation(extent={{58,-24},{78,-4}})));
+    Modelica.Blocks.Sources.RealExpression tIn[3](y={-2*time,0,0})
+      annotation (Placement(transformation(extent={{6,-44},{26,-24}})));
+    Modelica.Mechanics.MultiBody.Parts.Body body(r_CM={0,0,0.1}, m=1)
+      annotation (Placement(transformation(extent={{30,34},{50,54}})));
   equation
     connect(world.frame_b, eMBS_Body.frame_ref) annotation (Line(
         points={{-80,10},{-20,10}},
+        color={95,95,95},
+        thickness=0.5));
+    connect(tIn.y, torque.torque) annotation (Line(points={{27,-34},{42,-34},{
+            42,-14},{56,-14}}, color={0,0,127}));
+    connect(body.frame_a, eMBS_Body.frame_node[7]) annotation (Line(
+        points={{30,44},{30,10},{0,10}},
+        color={95,95,95},
+        thickness=0.5));
+    connect(body.frame_a, torque.frame_b) annotation (Line(
+        points={{30,44},{30,6},{78,6},{78,-14}},
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -210,10 +227,12 @@ package EMBSlib
           parameter Boolean animation = true annotation (Dialog(
               tab="Animation"));
 
-          //origin
+
+          //origin (if bodies are attached to the nodes, origin has to be derived due to index reduction, keeping it as a parameter works)
           parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
           parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
-          Real origin [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,zeros(nr0,nq,1),q);
+          Real origin_[nr0,1] = origin_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
+          Real origin[nr0] = origin_[:,1];
 
           //psi
           parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
@@ -221,12 +240,12 @@ package EMBSlib
           Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
           Modelica.SIunits.Angle theta [nr0] = psi*q "elastic rotation";
 
-
-          //phi
+          //phi(if bodies are attached to the nodes, phi has to be derived due to index reduction, keeping it as a parameter works)
           parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
           parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
-          Real phi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
-          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement";
+          parameter Real phi [nr0,nq] = phi_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
+          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement" annotation(each stateSelect=StateSelect.never);
+
 
           //AP
           parameter Real AP_M0[nr0,nr0] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation (Evaluate=true);
@@ -234,18 +253,20 @@ package EMBSlib
           Real AP [nr0,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
 
 
-
           Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"
             annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
+          Real q_d[nq] = der(q);
+
           Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
             annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
+
           Modelica.SIunits.Force f[nr0] = frame_b.f "external force applied";
 
           Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
 
 
-          Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f;
-          Modelica.SIunits.Torque hdt_i[nr0] = (origin[:,1]+u).*f+t;
+          Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f+transpose(psi)*t;
+          Modelica.SIunits.Torque hdt_i[nr0] = (origin+u).*f+t;
 
 
           parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
@@ -253,7 +274,7 @@ package EMBSlib
               tab="Animation",
               group="if animation = true",
               enable=animation));
-                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(r = frame_a.r_0 + origin[:,1]+deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
+                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(r = frame_a.r_0 + origin +deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
          shapeType="sphere",
          length=0.1,
          width=0.1,
@@ -274,7 +295,7 @@ package EMBSlib
           assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
             "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
 
-          frame_b.r_0 = frame_a.r_0 + origin[:,1]+u;
+          frame_b.r_0 = frame_a.r_0+origin+u;
           frame_b.R.T = frame_a.R.T * R_theta.T;
           frame_b.R.w = frame_a.R.w;
 
@@ -405,6 +426,7 @@ package EMBSlib
               M := M+aux;
             end for;
             M := M0 +M;
+            annotation(derivative=EMBSlib.MatrixFunctions.getTaylorFunction_d);
       end getTaylorFunction;
 
           function getGrMatrix
@@ -427,6 +449,49 @@ package EMBSlib
               Mout := Mout+aux*q[i];
             end for;
           end getGrMatrix;
+
+      function getTaylorFunction_d
+            input Integer nr;
+            input Integer nq;
+            input Integer nc;
+            input Real[nr,nc] M0;
+            input Real[nr,nq,nc] M1;
+            input Real[nq] q;
+            input Real[nq] der_q;
+            output Real[nr,nc] der_M;
+    protected
+            Real[nr,nc] aux;
+      algorithm
+            der_M := zeros(nr,nc);
+            for i in 1:nq loop
+              aux := M1[:,i,:]*q[i];
+              der_M := der_M+aux;
+            end for;
+            der_M := M0 +der_M;
+
+            annotation(derivative(order=2)=EMBSlib.MatrixFunctions.getTaylorFunction_2d);
+      end getTaylorFunction_d;
+
+      function getTaylorFunction_2d
+            input Integer nr;
+            input Integer nq;
+            input Integer nc;
+            input Real[nr,nc] M0;
+            input Real[nr,nq,nc] M1;
+            input Real[nq] q;
+            input Real[nq] der_q;
+            input Real[nq] der_2_q;
+            output Real[nr,nc] der_2_M;
+    protected
+            Real[nr,nc] aux;
+      algorithm
+            der_2_M := zeros(nr,nc);
+            for i in 1:nq loop
+              aux := M1[:,i,:]*q[i];
+              der_2_M := der_2_M+aux;
+            end for;
+            der_2_M := M0 +der_2_M;
+      end getTaylorFunction_2d;
   end MatrixFunctions;
 
   model SimplePlate2 "Plate with force excitation"
@@ -436,7 +501,7 @@ package EMBSlib
       enableAnimation=true,
       n={0,0,-1},
       animateGravity=true,
-      g=9.81,
+      g=0,
       animateWorld=true)
       annotation (Placement(transformation(extent={{-112,10},{-92,30}},
             rotation=0)));
@@ -582,37 +647,25 @@ package EMBSlib
       parameter Integer forceNode = 9;//5 works?!
 
 
-    Modelica.Mechanics.MultiBody.Joints.Prismatic prismatic(useAxisFlange=true, n(
-          displayUnit="1") = {0,0,1})
-      annotation (Placement(transformation(extent={{-56,10},{-36,30}})));
-    Modelica.Blocks.Sources.Sine sine1(
-      freqHz=1,
-      phase=1.7,
-      amplitude=0,
-      offset=0,
-      startTime=3)  annotation (Placement(transformation(extent={{-142,58},{-122,78}},
-                         rotation=0)));
-    Modelica.Mechanics.Translational.Sources.Accelerate accelerate(useSupport=true)
-      annotation (Placement(transformation(extent={{-64,52},{-44,72}})));
+    Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
+      annotation (Placement(transformation(extent={{68,-66},{88,-46}})));
+    Modelica.Blocks.Sources.RealExpression torqueIn[3](y={time,0,0})
+      annotation (Placement(transformation(extent={{32,-66},{52,-46}})));
   algorithm
 
   equation
 
 
-    connect(world.frame_b, prismatic.frame_a) annotation (Line(
-        points={{-92,20},{-56,20}},
+    connect(world.frame_b, ModalBody.frame_ref) annotation (Line(
+        points={{-92,20},{-20,20}},
         color={95,95,95},
         thickness=0.5));
-    connect(ModalBody.frame_ref, prismatic.frame_b) annotation (Line(
-        points={{-20,20},{-36,20}},
+    connect(torque.frame_b, ModalBody.nodes[4]) annotation (Line(
+        points={{88,-56},{90,-56},{90,20},{40,20}},
         color={95,95,95},
         thickness=0.5));
-    connect(prismatic.support, accelerate.support) annotation (Line(points={{-50,26},
-            {-52,26},{-52,52},{-54,52}}, color={0,127,0}));
-    connect(accelerate.flange, prismatic.axis)
-      annotation (Line(points={{-44,62},{-38,62},{-38,26}}, color={0,127,0}));
-    connect(sine1.y, accelerate.a_ref) annotation (Line(points={{-121,68},{-94,68},
-            {-94,62},{-66,62}}, color={0,0,127}));
+    connect(torqueIn.y, torque.torque)
+      annotation (Line(points={{53,-56},{66,-56}}, color={0,0,127}));
     annotation (Diagram(coordinateSystem(preserveAspectRatio=true,  extent={{-100,
               -100},{100,100}})),
                          Documentation(info="<html>
