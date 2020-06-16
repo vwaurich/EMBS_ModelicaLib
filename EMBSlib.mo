@@ -13,19 +13,16 @@ package EMBSlib
       axisLength=0.02)
         annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
 
-    Modelica.Mechanics.MultiBody.Forces.WorldForce force
-      annotation (Placement(transformation(extent={{-22,-42},{-2,-22}})));
-    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,0,10*time})
-      annotation (Placement(transformation(extent={{-66,-42},{-46,-22}})));
+    Modelica.Mechanics.MultiBody.Joints.Revolute revolute(n(displayUnit="1") =
+        {0,1,0})
+      annotation (Placement(transformation(extent={{-58,2},{-38,22}})));
   equation
-    connect(world.frame_b, eMBS_Body.frame_ref) annotation (Line(
-        points={{-80,10},{-20,10}},
+    connect(world.frame_b, revolute.frame_a) annotation (Line(
+        points={{-80,10},{-70,10},{-70,12},{-58,12}},
         color={95,95,95},
         thickness=0.5));
-    connect(fIn.y, force.force)
-      annotation (Line(points={{-45,-32},{-24,-32}}, color={0,0,127}));
-    connect(eMBS_Body.frame_node[7], force.frame_b) annotation (Line(
-        points={{0,10},{28,10},{28,-32},{-2,-32}},
+    connect(eMBS_Body.frame_ref, revolute.frame_b) annotation (Line(
+        points={{-20,10},{-30,10},{-30,12},{-38,12}},
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -63,18 +60,24 @@ package EMBSlib
           // kinematic equations --> translation
           Real M_t[3] = mI*(a-g_0) + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
           Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
-          Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
+          Real res2_1[3,1] = omega_tilde*omega_tilde*mdCM; // need the intermediate value to fix the dimensions
           Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:numNodes);
 
           // kinematic equations --> rotation
           Real M_r[3] = mdCM_tilde*(a-g_0) + J* omega_d + transpose(Cr) * qdd;
           Real k_omega_r[3] = Gr* omega + omega_tilde*J*omega;
+          Real k_omega_r_1[3] = Gr* omega;
+          Real k_omega_r_2[3] = omega_tilde*J*omega;
+
           //Real t_comp[3] = M_r+k_omega_r;
           Real hd_r[3] = sum(identity(3)*nodes[i].t for i in 1:numNodes);
 
           //kinematic equations --> modal
           Real M_q[nq] = Ct*(a-g_0) + Cr* omega_d + Me* qdd;
           Real k_omega_q[nq] =  Ge*omega + Oe_*OMega;
+          Real k_omega_q_1[nq] =  Ge*omega;
+          Real k_omega_q_2[nq] =  Oe_*OMega;
+
           Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
           Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:numNodes);
 
@@ -106,6 +109,12 @@ package EMBSlib
 
           //SID File Data
 
+      Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame1(
+        length=0.8,
+        color_x={0,0,200},
+        color_y={0,0,200},
+        color_z={0,0,200})
+        annotation (Placement(transformation(extent={{-54,-44},{-34,-24}})));
     protected
           parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
           //mass
@@ -180,16 +189,12 @@ package EMBSlib
          for i in 1:numNodes loop
 
           connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
-          connect(nodes[i].frame_a, frame_ref) annotation (Line(
-              points={{-10,0.4},{-50,0.4},{-50,0},{-100,0}},
-              color={95,95,95},
-              thickness=0.5));
           connect(nodes[i].frame_b, frame_node[i]) annotation (Line(
               points={{10,0.2},{25,0.2},{25,0},{100,0}},
               color={95,95,95},
               thickness=0.5));
-                connect(nodes[i].frame_a, frame_ref) annotation (Line(
-          points={{-10,0.4},{-32,0.4},{-32,0},{-100,0}},
+          connect(nodes[i].frame_a, frame_ref) annotation (Line(
+          points={{-10,0.4},{-55,0.4},{-55,0},{-100,0}},
           color={95,95,95},
           thickness=0.5));
          end for;
@@ -209,6 +214,10 @@ package EMBSlib
 
       connect(fixedFrame.frame_a, frame_node) annotation (Line(
           points={{80,48},{62,48},{62,0},{100,0}},
+          color={95,95,95},
+          thickness=0.5));
+      connect(fixedFrame1.frame_a, frame_ref) annotation (Line(
+          points={{-54,-34},{-68,-34},{-68,-32},{-100,-32},{-100,0}},
           color={95,95,95},
           thickness=0.5));
             annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
@@ -272,7 +281,8 @@ package EMBSlib
               tab="Animation",
               group="if animation = true",
               enable=animation));
-                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(r = frame_a.r_0 + origin +deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
+                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
+        r=frame_b.r_0,
          shapeType="sphere",
          length=sphereDiameter,
          width=sphereDiameter,
@@ -293,13 +303,22 @@ package EMBSlib
           assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
             "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
 
-          frame_b.r_0 = frame_a.r_0+origin+u;
-          frame_b.R.T = frame_a.R.T * R_theta.T;
-          frame_b.R.w = frame_a.R.w;
+          frame_b.r_0 = frame_a.r_0 +  Modelica.Mechanics.MultiBody.Frames.resolve1(frame_a.R, origin+u);
 
-          /* Force and torque balance */
-          zeros(3) = frame_a.f + frame_b.f;
-          zeros(3) = frame_a.t + frame_b.t;
+          if Connections.rooted(frame_a.R) then
+            frame_b.R = Modelica.Mechanics.MultiBody.Frames.absoluteRotation(frame_a.R, R_theta);
+            zeros(3) = frame_a.f + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_b.f);
+            zeros(3) = frame_a.t + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_b.t) - cross(origin+u,
+              frame_a.f);
+          else
+            frame_a.R = Modelica.Mechanics.MultiBody.Frames.absoluteRotation(frame_b.R, R_theta);
+            zeros(3) = frame_b.f + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_a.f);
+            zeros(3) = frame_b.t + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_a.t) + cross(
+              Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u), frame_b.f);
+          end if;
+
+
+
           //connect(frame_a, frame_b) annotation (Line(      points={{-100,-56},{-2,-56},{-2,-58},{100,-58}},      color={95,95,95},      thickness=0.5));
           annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
             Ellipse(
@@ -622,24 +641,31 @@ package EMBSlib
       Real phi_d[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(ModalBody.frame_ref.R);
       Real phi_dd[3] = der(phi_d);
       Real omega_tilde[3,3] = {{0, -phi_d[3],phi_d[2]},  {phi_d[3],0,-phi_d[1]}, {-phi_d[2],phi_d[1],0}};
+      Real omega_tilde2[3,3] = omega_tilde*omega_tilde;
+
 
       // kinematic equations --> translation
       Real M_t[3] = mI*r_0_dd + transpose(mdCM_tilde)*phi_dd + transpose(Ct)*q_dd;
-      Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*q_d + res2_1[:,1];
-      Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
+      Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*q_d + k_omega_t_2[:,1];
+      Real k_omega_t_2[3,1] = omega_tilde*omega_tilde*mdCM_; // need the intermediate value to fix the dimensions
       Real f_comp[3] = M_t+k_omega_t;
       Real hd_t[3] = sum(identity(3)*ModalBody.nodes[i].f for i in 1:ModalBody.n_Nodes);
       Real residual_t[3] = f_comp - hd_t - ModalBody.frame_ref.f;  // this should be zero
 
       // kinematic equations --> rotation
       Real M_r[3] = mdCM_tilde*r_0_dd + J*phi_dd + transpose(Cr) *q_dd;
-      Real k_omega_r[3] = Gr*phi_dd + omega_tilde*J*phi_d;
+      Real k_omega_r[3] = Gr*phi_d + omega_tilde*J*phi_d;
+      Real k_omega_r_1[3] = Gr*phi_d;
+      Real k_omega_r_2[3] = omega_tilde*J*phi_d;
       Real t_comp[3] = M_r+k_omega_r;
       Real hd_r[3] = sum(ModalBody.nodes[i].r_0.*ModalBody.nodes[i].f+ModalBody.nodes[i].t for i in 1:ModalBody.n_Nodes);
+      Real residual_r[3] = t_comp - hd_r - ModalBody.frame_ref.t;  // this should be zero
 
       //kinematic equations --> modal
       Real M_q[3] = Ct*r_0_dd + Cr*phi_dd + Me*q_dd;
-      Real k_omega_q[3] =  Ge*phi_d + Oe*OMega;
+      Real k_omega_q[3] = Ge*phi_d + Oe*OMega;
+      Real k_omega_q_1[3] = Ge*phi_d;
+      Real k_omega_q_2[3] = Oe*OMega;
       Real k_q[nq] = ksigma[:,1] + Ke*q +De*q_d;
       Real q_comp[nq] = M_q + k_omega_q + k_q;
       Real hde[nq] = phi*ModalBody.nodes[forceNode].f;
@@ -666,25 +692,22 @@ package EMBSlib
       parameter Integer forceNode = 9;//5 works?!
 
 
-    Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
-      annotation (Placement(transformation(extent={{68,-66},{88,-46}})));
-    Modelica.Blocks.Sources.RealExpression torqueIn[3](y={time,0,0})
-      annotation (Placement(transformation(extent={{32,-66},{52,-46}})));
+    Modelica.Mechanics.MultiBody.Joints.Revolute revolute(n(displayUnit="1") = {0,
+        1,0}, w(fixed=true, start=1))
+              annotation (Placement(transformation(extent={{-62,10},{-42,30}})));
   algorithm
 
   equation
 
 
-    connect(world.frame_b, ModalBody.frame_ref) annotation (Line(
-        points={{-92,20},{-20,20}},
+    connect(world.frame_b, revolute.frame_a) annotation (Line(
+        points={{-92,20},{-62,20}},
         color={95,95,95},
         thickness=0.5));
-    connect(torque.frame_b, ModalBody.nodes[4]) annotation (Line(
-        points={{88,-56},{90,-56},{90,20},{40,20}},
+    connect(ModalBody.frame_ref, revolute.frame_b) annotation (Line(
+        points={{-20,20},{-42,20}},
         color={95,95,95},
         thickness=0.5));
-    connect(torqueIn.y, torque.torque)
-      annotation (Line(points={{53,-56},{66,-56}}, color={0,0,127}));
     annotation (Diagram(coordinateSystem(preserveAspectRatio=true,  extent={{-100,
               -100},{100,100}})),
                          Documentation(info="<html>
@@ -727,7 +750,7 @@ Results of the model SimplePlate
   </tr>
 </table>
 </html>"),   experiment(
-        StopTime=20,
+        StopTime=1,
         Tolerance=1e-06,
         __Dymola_Algorithm="Dassl"),
       experimentSetupOutput,
