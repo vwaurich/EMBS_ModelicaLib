@@ -4,7 +4,7 @@ package EMBSlib
   model EMBS_bodyExample
     extends Modelica.Icons.Example;
 
-    Components.EMBS_Body eMBS_Body
+    Components.EMBS_Body eMBS_Body(nodeIdxs={84,107,12,149})
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
 
     inner Modelica.Mechanics.MultiBody.World world(
@@ -24,8 +24,8 @@ package EMBSlib
         thickness=0.5));
     connect(fIn.y, force.force)
       annotation (Line(points={{-45,-32},{-24,-32}}, color={0,0,127}));
-    connect(eMBS_Body.frame_node[7], force.frame_b) annotation (Line(
-        points={{0,10},{28,10},{28,-32},{-2,-32}},
+    connect(force.frame_b, eMBS_Body.frame_node[3]) annotation (Line(
+        points={{-2,-32},{22,-32},{22,-36},{44,-36},{44,10},{0,10},{0,10}},
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -33,8 +33,12 @@ package EMBSlib
 
   package Components
     model EMBS_Body
-          parameter Integer numNodes = 9;
+          parameter Integer numNodes = 9 "the number of nodes given in the SID file";
           parameter Integer numModes = 3 "the number of modes given in the SID file";
+          parameter Integer[:] nodeIdxs  "the node indeces that are instanciated as multibody flanges" annotation(Evaluate=true);
+          parameter Integer[:] animationNodeIdxs = EMBSlib.ExternalFunctions_C.getRestNodeIdcs(sid, n_mbsNodes,nodeIdxs, n_animationNodes) "the node indeces that are use for animation of nodes" annotation(Evaluate=true);
+          parameter Integer n_mbsNodes = size(nodeIdxs,1) annotation(Evaluate=true);
+          parameter Integer n_animationNodes = numNodes-n_mbsNodes;
           parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
 
           parameter Boolean animation = true annotation (Dialog(    tab="Animation"));
@@ -64,27 +68,39 @@ package EMBSlib
           Real M_t[3] = mI*(a-g_0) + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
           Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
           Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
-          Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:numNodes);
+          Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:n_mbsNodes);
 
           // kinematic equations --> rotation
           Real M_r[3] = mdCM_tilde*(a-g_0) + J* omega_d + transpose(Cr) * qdd;
           Real k_omega_r[3] = Gr* omega + omega_tilde*J*omega;
           //Real t_comp[3] = M_r+k_omega_r;
-          Real hd_r[3] = sum(identity(3)*nodes[i].t for i in 1:numNodes);
+          Real hd_r[3] = sum(identity(3)*nodes[i].t for i in 1:n_mbsNodes);
 
           //kinematic equations --> modal
           Real M_q[nq] = Ct*(a-g_0) + Cr* omega_d + Me* qdd;
           Real k_omega_q[nq] =  Ge*omega + Oe_*OMega;
           Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
-          Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:numNodes);
+          Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:n_mbsNodes);
 
-          Node nodes[numNodes](each sid=sid, each nq=nq, nodeArrayIdx = 1:numNodes,
-        each deformationScalingFactor=deformationScalingFactor, each sphereDiameter=sphereDiameter)                          annotation (Placement(transformation(extent={{-10,-4},
+          Node nodes[n_mbsNodes](each sid=sid,
+           each nq=nq,
+           nodeIdx = nodeIdxs,
+           each deformationScalingFactor=deformationScalingFactor,
+           each coordinateSystemScalingFactor=coordinateSystemScalingFactor,
+           each sphereDiameter=sphereDiameter)                          annotation (Placement(transformation(extent={{-10,-4},
                     {10,16}})));
+
+          AnimationNode
+               animationNodes[n_animationNodes](each sid=sid,
+           each nq=nq,
+           nodeIdx = animationNodeIdxs,
+           each deformationScalingFactor=deformationScalingFactor,
+           each coordinateSystemScalingFactor=coordinateSystemScalingFactor,
+           each sphereDiameter=sphereDiameter)    annotation (Placement(transformation(extent={{-10,-52},{10,-32}})));
 
           Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref
          annotation (Placement(transformation(extent={{-116,-16},{-84,16}})));
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation (Placement(transformation(extent={{84,-16},
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[n_mbsNodes] annotation (Placement(transformation(extent={{84,-16},
                     {116,16}})));
 
           Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
@@ -100,9 +116,6 @@ package EMBSlib
         annotation (Placement(transformation(extent={{-88,46},{-68,66}})));
           Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest)
         annotation (Placement(transformation(extent={{-124,46},{-104,66}})));
-          Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame[numNodes](each length=
-            coordinateSystemScalingFactor)
-        annotation (Placement(transformation(extent={{80,38},{100,58}})));
 
           //SID File Data
 
@@ -169,7 +182,7 @@ package EMBSlib
 
           outer Modelica.Mechanics.MultiBody.World world
         annotation (Placement(transformation(extent={{-100,80},{-80,100}})));
-
+          //Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame[n_mbsNodes](length=        coordinateSystemScalingFactor)    annotation (Placement(transformation(extent={{56,22},{76,42}})));
 
     equation
          //kinematic equations
@@ -177,8 +190,7 @@ package EMBSlib
          M_r+k_omega_r=  -t_rest;
          M_q + k_omega_q + k_q = hd_e;
 
-         for i in 1:numNodes loop
-
+         for i in 1:n_mbsNodes loop
           connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
           connect(nodes[i].frame_a, frame_ref) annotation (Line(
               points={{-10,0.4},{-50,0.4},{-50,0},{-100,0}},
@@ -188,11 +200,22 @@ package EMBSlib
               points={{10,0.2},{25,0.2},{25,0},{100,0}},
               color={95,95,95},
               thickness=0.5));
-                connect(nodes[i].frame_a, frame_ref) annotation (Line(
+          connect(nodes[i].frame_a, frame_ref) annotation (Line(
           points={{-10,0.4},{-32,0.4},{-32,0},{-100,0}},
           color={95,95,95},
           thickness=0.5));
          end for;
+
+         for a in 1: n_animationNodes loop
+
+      connect(animationNodes[a].q, qExp.y) annotation (Line(points={{-10.2,-42.2},{-10.2,
+              -42},{-28,-42},{-28,50},{-37,50}}, color={0,0,127}));
+          connect(animationNodes[a].frame_a, frame_ref) annotation (Line(
+          points={{-10,-47.6},{-80,-47.6},{-80,0},{-100,0}},
+          color={95,95,95},
+          thickness=0.5));
+         end for;
+
 
       connect(force.frame_b, frame_ref) annotation (Line(
           points={{-66,28},{-64,28},{-64,0},{-100,0}},
@@ -206,21 +229,18 @@ package EMBSlib
           thickness=0.5));
       connect(t_elast2.y, torque.torque)
         annotation (Line(points={{-103,56},{-90,56}}, color={0,0,127}));
-
-      connect(fixedFrame.frame_a, frame_node) annotation (Line(
-          points={{80,48},{62,48},{62,0},{100,0}},
-          color={95,95,95},
-          thickness=0.5));
             annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
     end EMBS_Body;
 
     model Node
           parameter EMBSlib.SID_File sid;
           parameter Integer nq = 3;
-          parameter Integer nodeArrayIdx = 1;
+          parameter Integer nodeIdx = 1;
+          parameter Integer nodeArrayIdx = EMBSlib.ExternalFunctions_C.getNodeArrayIdx(sid,nodeIdx);
           parameter Integer nr0 = 3;
 
           parameter Real deformationScalingFactor= 1;
+          parameter Real coordinateSystemScalingFactor = 0.02;
           parameter Boolean animation = true annotation (Dialog(
               tab="Animation"));
 
@@ -277,9 +297,9 @@ package EMBSlib
          length=sphereDiameter,
          width=sphereDiameter,
          height=sphereDiameter,
-         lengthDirection={1,0,0})
+         lengthDirection={1,0,0},
+        color={255,85,85})
          annotation (Placement(transformation(extent={{80,60},{100,80}})));
-
 
 
           Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b
@@ -326,6 +346,88 @@ package EMBSlib
                 coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
                     100,100}})));
     end Node;
+
+    model AnimationNode
+          parameter EMBSlib.SID_File sid;
+          parameter Integer nq = 3;
+          parameter Integer nodeIdx = 1;
+          parameter Integer nodeArrayIdx = EMBSlib.ExternalFunctions_C.getNodeArrayIdx(sid,nodeIdx);
+          parameter Integer nr0 = 3;
+
+          parameter Real deformationScalingFactor= 1;
+          parameter Real coordinateSystemScalingFactor = 0.02;
+          parameter Boolean animation = true annotation (Dialog(
+              tab="Animation"));
+
+          //origin (if bodies are attached to the nodes, origin has to be derived due to index reduction, keeping it as a parameter works)
+          parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
+          parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
+          Real origin_[nr0,1] = origin_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
+          Real origin[nr0] = origin_[:,1];
+
+          //psi
+          parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
+          parameter Real psi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
+          Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
+          Modelica.SIunits.Angle theta [nr0] = psi*q "elastic rotation";
+
+          //phi(if bodies are attached to the nodes, phi has to be derived due to index reduction, keeping it as a parameter works)
+          parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
+          parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
+          parameter Real phi [nr0,nq] = phi_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
+          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement" annotation(each stateSelect=StateSelect.never);
+
+          //AP
+          parameter Real AP_M0[nr0,nr0] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation (Evaluate=true);
+          parameter Real AP_M1[nr0,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "AP",nodeArrayIdx, nr0, nq, nr0) annotation (Evaluate=true);
+          Real AP [nr0,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
+
+          Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"        annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
+          parameter Modelica.SIunits.Diameter sphereDiameter=0.01 "Diameter of sphere" annotation (Dialog(
+              tab="Animation",
+              group="if animation = true",
+              enable=animation));
+          Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
+        R=R_theta,                                                      r = frame_a.r_0 + origin +deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
+        shapeType="box",                                                                                                                                                            length=sphereDiameter,     width=sphereDiameter,     height=sphereDiameter,     lengthDirection={1,0,0},
+        color={170,85,255})                                                                                                                                                                                                         annotation (Placement(transformation(extent={{80,60},{100,80}})));
+
+      Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
+        annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
+    protected
+          Modelica.Mechanics.MultiBody.Frames.Orientation R_theta = Modelica.Mechanics.MultiBody.Frames.axesRotations({1,2,3},theta,zeros(3));
+    equation
+          frame_a.f=zeros(3);
+          frame_a.t=zeros(3);
+          annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
+            Ellipse(
+              extent={{-54,50},{54,-58}},
+              lineColor={0,0,0},
+              fillColor={170,213,255},
+              fillPattern=FillPattern.Solid),
+            Line(
+              points={{36,36},{82,88}},
+              color={0,0,0},
+              thickness=0.5),
+            Line(
+              points={{-78,86},{-34,38}},
+              color={0,0,0},
+              thickness=0.5),
+            Line(
+              points={{-38,-44},{-86,-94}},
+              color={0,0,0},
+              thickness=0.5),
+            Line(
+              points={{32,-48},{94,-96}},
+              color={0,0,0},
+              thickness=0.5),
+            Text(
+              extent={{-22,26},{22,-34}},
+              lineColor={28,108,200},
+              textString="A")}),                                         Diagram(
+                coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
+                    100,100}})));
+    end AnimationNode;
   end Components;
 
   class SID_File
@@ -349,6 +451,24 @@ package EMBSlib
 
   package ExternalFunctions_C
     extends Modelica.Icons.FunctionsPackage;
+
+     function getNodeArrayIdx
+      input EMBSlib.SID_File sid;
+      input Integer nodeId;
+      output Integer nodeArrayIdx;
+     external"C" nodeArrayIdx = getNodeArrayIdx_C(sid,nodeId)
+              annotation(Include="#include \"ReadSID_C.h\"");
+     end getNodeArrayIdx;
+
+     function getRestNodeIdcs
+      input EMBSlib.SID_File sid;
+      input Integer nMBSnodes;
+      input Integer[nMBSnodes] nodeIds;
+      input Integer nRestNodes;
+      output Integer[nRestNodes] nodeArrayIdx;
+     external"C" getRestNodeIdcs_C(sid,nodeIds,nMBSnodes,nodeArrayIdx,nRestNodes)
+              annotation(Include="#include \"ReadSID_C.h\"");
+     end getRestNodeIdcs;
 
      function getMass
       input EMBSlib.SID_File sid;
@@ -738,5 +858,5 @@ Results of the model SimplePlate
         file="modelica://FlexibleBodies/Resources/Scripts/PlotSimplePlate.mos"
           "Plot Results"));
   end SimplePlate2;
-  annotation (uses(Modelica(version="3.2.3")));
+  annotation (uses(Modelica(version="3.2.3"), FlexibleBodies(version="2.3.0")));
 end EMBSlib;

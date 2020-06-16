@@ -484,6 +484,43 @@ double getMass(void* p_sid){
 	return d;
 }
 
+double getNodeArrayIdx_C(void* p_sid, int nodeId){
+	SID_Data* sid = (SID_Data*)p_sid;
+	for (int i=0;i<sid->numNodes;i++){
+		if(nodeId == sid->nodes[i].id){
+			return i+1;
+		}
+	}
+	ModelicaFormatMessage("getNodeArrayIdx_C: Could not find noteIdx %d in nodearray[%d] \n",nodeId, sid->numNodes);
+	return -1;
+}
+
+void getRestNodeIdcs_C(void* p_sid, int* mbsNodes, int nMBSnodes, int* restNodesArrIdxOut, int nRestNodes){
+	SID_Data* sid = (SID_Data*)p_sid;
+	if(sid->numNodes !=(nMBSnodes+nRestNodes))
+		ModelicaFormatMessage("getRestNodeIdcs_C: Number of mbs nodes %d and expected remaining nodes %d is no equal to number of nodes in the SID %d\n",nMBSnodes,nRestNodes,sid->numNodes);
+	
+	int restNodeIdx = 0;
+	for (int i=0;i<sid->numNodes;i++){
+		int foundMBSNode=0;
+		//ModelicaFormatMessage("Check nodeIdx %d = %d\n",i,sid->nodes[i].id);
+		for(int m=0;m<nMBSnodes;m++){
+			int mbsNodeIdx = mbsNodes[m];
+			if(sid->nodes[i].id == mbsNodeIdx){
+				//ModelicaFormatMessage("found %d \n",sid->nodes[i].id);
+				foundMBSNode = 1;
+				break;
+			}
+			else{
+				//ModelicaFormatMessage("%d not in MBS nodes\n",sid->nodes[i].id);
+			}
+		}
+		if(!foundMBSNode){
+			restNodesArrIdxOut[restNodeIdx] = sid->nodes[i].id;
+			restNodeIdx++;
+		}
+	}
+}
 
 
 //Taylor Retrieval
