@@ -5,8 +5,8 @@ package EMBSlib
     extends Modelica.Icons.Example;
 
     Components.EMBS_Body eMBS_Body(
-      numNodes=4,
-      numModes=11,
+      numNodes=5,
+      numModes=8,
       SIDfileName="E:/Projekte/VIBROSIM_2/MOR_Test/Balken_2M.SID_FEM")
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
     inner Modelica.Mechanics.MultiBody.World world(g=1,
@@ -15,20 +15,20 @@ package EMBSlib
 
     Modelica.Mechanics.MultiBody.Forces.WorldForce force
       annotation (Placement(transformation(extent={{6,-48},{26,-28}})));
-    Modelica.Blocks.Sources.RealExpression fIn[3](y={100,0,0})
+    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,0,1e5*time})
       annotation (Placement(transformation(extent={{-86,-58},{-66,-38}})));
   equation
     connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
         points={{-20,10},{-80,10}},
         color={95,95,95},
         thickness=0.5));
-    connect(force.frame_b, eMBS_Body.frame_node[1]) annotation (Line(
-        points={{26,-38},{32,-38},{32,12},{8.88178e-16,12},{8.88178e-16,8.8}},
-        color={95,95,95},
-        thickness=0.5));
 
     connect(fIn.y, force.force) annotation (Line(points={{-65,-48},{-32,-48},{-32,
             -38},{4,-38}}, color={0,0,127}));
+    connect(force.frame_b, eMBS_Body.frame_node[2]) annotation (Line(
+        points={{26,-38},{36,-38},{36,-40},{52,-40},{52,9.36},{0,9.36}},
+        color={95,95,95},
+        thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
   end Balken;
 
