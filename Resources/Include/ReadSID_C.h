@@ -408,7 +408,7 @@ void* SIDFileConstructor_C(const char* fileName)
 			init = 1;
 			sid->nodes = calloc(sizeof(node), sid->numNodes);
 		}
-		if (strstr(line, "refmod")) {
+		else if (strstr(line, "refmod")) {
 			parseRefMod(line, bufferSize, sidFile, sid);
 		}
 		else if (strstr(line, "frame")) {

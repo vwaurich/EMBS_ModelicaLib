@@ -1,28 +1,57 @@
 within ;
 package EMBSlib
 
+  model Balken
+    extends Modelica.Icons.Example;
+
+    Components.EMBS_Body eMBS_Body(
+      numNodes=4,
+      numModes=11,
+      SIDfileName="E:/Projekte/VIBROSIM_2/MOR_Test/Balken_2M.SID_FEM")
+        annotation (Placement(transformation(extent={{-20,0},{0,20}})));
+    inner Modelica.Mechanics.MultiBody.World world(g=1,
+      n(displayUnit="1") = {0,0,-1})
+        annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
+
+    Modelica.Mechanics.MultiBody.Forces.WorldForce force
+      annotation (Placement(transformation(extent={{6,-48},{26,-28}})));
+    Modelica.Blocks.Sources.RealExpression fIn[3](y={100,0,0})
+      annotation (Placement(transformation(extent={{-86,-58},{-66,-38}})));
+  equation
+    connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
+        points={{-20,10},{-80,10}},
+        color={95,95,95},
+        thickness=0.5));
+    connect(force.frame_b, eMBS_Body.frame_node[1]) annotation (Line(
+        points={{26,-38},{32,-38},{32,12},{8.88178e-16,12},{8.88178e-16,8.8}},
+        color={95,95,95},
+        thickness=0.5));
+
+    connect(fIn.y, force.force) annotation (Line(points={{-65,-48},{-32,-48},{-32,
+            -38},{4,-38}}, color={0,0,127}));
+    annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
+  end Balken;
+
   model EMBS_bodyExample
     extends Modelica.Icons.Example;
 
     Components.EMBS_Body eMBS_Body
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
 
-    inner Modelica.Mechanics.MultiBody.World world(
-      g=9.81,
-      n(displayUnit="1") = {0,0,-1},
-      axisLength=0.02)
+    inner Modelica.Mechanics.MultiBody.World world(g=9.81,
+      n(displayUnit="1") = {0,0,-1})
         annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
 
-    Modelica.Mechanics.MultiBody.Joints.Revolute revolute(n(displayUnit="1") =
-        {0,1,0})
-      annotation (Placement(transformation(extent={{-58,2},{-38,22}})));
+    Modelica.Mechanics.MultiBody.Joints.Revolute revFix(n(displayUnit="1") = {1,
+        0,0}, w(fixed=true, start=0))
+      annotation (Placement(transformation(extent={{-58,0},{-38,20}})));
   equation
-    connect(world.frame_b, revolute.frame_a) annotation (Line(
-        points={{-80,10},{-70,10},{-70,12},{-58,12}},
+    connect(world.frame_b, revFix.frame_a) annotation (Line(
+        points={{-80,10},{-58,10}},
         color={95,95,95},
         thickness=0.5));
-    connect(eMBS_Body.frame_ref, revolute.frame_b) annotation (Line(
-        points={{-20,10},{-30,10},{-30,12},{-38,12}},
+    connect(eMBS_Body.frame_ref, revFix.frame_b) annotation (Line(
+        points={{-20,10},{-38,10}},
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -41,6 +70,12 @@ package EMBSlib
 
           constant Integer nr0 = 3 "dimension in space";
 
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref
+         annotation (Placement(transformation(extent={{-116,-16},{-84,16}})));
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation (Placement(transformation(extent={{84,-16},
+                    {116,16}})));
+
+
           Real q[nq] "modal coordinates";
           Real qd[nq] = der(q);
           Real qdd[nq] = der(qd);
@@ -48,10 +83,8 @@ package EMBSlib
           Modelica.SIunits.Position r_0[3](start={0,0,0}) = frame_ref.r_0  "position of frame of reference";
           Modelica.SIunits.Velocity v[3] = der(r_0) "velocity of frame of reference";
           Modelica.SIunits.Acceleration a[3] = der(v) "acceleration of frame of reference";
-          Modelica.SIunits.Acceleration g_0[3] = world.gravityAcceleration(frame_ref.r_0 + Modelica.Mechanics.MultiBody.Frames.resolve1(frame_ref.R,
-        cm[:,1])) "Gravity acceleration resolved in world frame" annotation(Evaluate=true);
-
-
+          Modelica.SIunits.Acceleration g_0[3] =  Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,world.gravityAcceleration(frame_ref.r_0 + Modelica.Mechanics.MultiBody.Frames.resolve1(frame_ref.R,
+        cm[:,1]))) "Gravity acceleration resolved in world frame" annotation(Evaluate=true);
 
           Modelica.SIunits.AngularVelocity omega[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
           Modelica.SIunits.AngularAcceleration omega_d[3] = der(omega);
@@ -85,21 +118,19 @@ package EMBSlib
         each deformationScalingFactor=deformationScalingFactor, each sphereDiameter=sphereDiameter)                          annotation (Placement(transformation(extent={{-10,-4},
                     {10,16}})));
 
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref
-         annotation (Placement(transformation(extent={{-116,-16},{-84,16}})));
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation (Placement(transformation(extent={{84,-16},
-                    {116,16}})));
 
           Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
             annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
 
           Modelica.SIunits.Torque[3] t_rest;
           Modelica.SIunits.Force[3] f_rest;
-          Modelica.Mechanics.MultiBody.Forces.WorldForce force
+          Modelica.Mechanics.MultiBody.Forces.WorldForce force(resolveInFrame=
+            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, N_to_m=0.1)
         annotation (Placement(transformation(extent={{-86,18},{-66,38}})));
           Modelica.Blocks.Sources.RealExpression f_elast1[nr0](y=f_rest)
         annotation (Placement(transformation(extent={{-124,16},{-104,36}})));
-          Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
+          Modelica.Mechanics.MultiBody.Forces.WorldTorque torque(resolveInFrame=
+            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, Nm_to_m=0.1)
         annotation (Placement(transformation(extent={{-88,46},{-68,66}})));
           Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest)
         annotation (Placement(transformation(extent={{-124,46},{-104,66}})));
@@ -109,12 +140,6 @@ package EMBSlib
 
           //SID File Data
 
-      Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame1(
-        length=0.8,
-        color_x={0,0,200},
-        color_y={0,0,200},
-        color_z={0,0,200})
-        annotation (Placement(transformation(extent={{-54,-44},{-34,-24}})));
     protected
           parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
           //mass
@@ -179,11 +204,12 @@ package EMBSlib
           outer Modelica.Mechanics.MultiBody.World world
         annotation (Placement(transformation(extent={{-100,80},{-80,100}})));
 
+          Modelica.SIunits.Torque[3] Tg = cross(Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,g_0),cm[:,1]);
 
     equation
          //kinematic equations
-         M_t +k_omega_t  =  -f_rest;
-         M_r+k_omega_r=  -t_rest;
+         M_t +k_omega_t = -f_rest;
+         M_r + k_omega_r = -t_rest;
          M_q + k_omega_q + k_q = hd_e;
 
          for i in 1:numNodes loop
@@ -214,10 +240,6 @@ package EMBSlib
 
       connect(fixedFrame.frame_a, frame_node) annotation (Line(
           points={{80,48},{62,48},{62,0},{100,0}},
-          color={95,95,95},
-          thickness=0.5));
-      connect(fixedFrame1.frame_a, frame_ref) annotation (Line(
-          points={{-54,-34},{-68,-34},{-68,-32},{-100,-32},{-100,0}},
           color={95,95,95},
           thickness=0.5));
             annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
@@ -303,6 +325,7 @@ package EMBSlib
           assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
             "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
 
+
           frame_b.r_0 = frame_a.r_0 +  Modelica.Mechanics.MultiBody.Frames.resolve1(frame_a.R, origin+u);
 
           if Connections.rooted(frame_a.R) then
@@ -317,8 +340,15 @@ package EMBSlib
               Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u), frame_b.f);
           end if;
 
+          /*
+          frame_b.r_0 = frame_a.r_0+origin+u;
+          frame_b.R.T = frame_a.R.T * R_theta.T;
+          frame_b.R.w = frame_a.R.w;
 
-
+          //Force and torque balance 
+          zeros(3) = frame_a.f + frame_b.f;
+          zeros(3) = frame_a.t + frame_b.t;
+*/
           //connect(frame_a, frame_b) annotation (Line(      points={{-100,-56},{-2,-56},{-2,-58},{100,-58}},      color={95,95,95},      thickness=0.5));
           annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
             Ellipse(
@@ -539,7 +569,7 @@ package EMBSlib
       enableAnimation=true,
       n={0,0,-1},
       animateGravity=true,
-      g=0,
+      g=9.81,
       animateWorld=true)
       annotation (Placement(transformation(extent={{-112,10},{-92,30}},
             rotation=0)));
@@ -692,19 +722,19 @@ package EMBSlib
       parameter Integer forceNode = 9;//5 works?!
 
 
-    Modelica.Mechanics.MultiBody.Joints.Revolute revolute(n(displayUnit="1") = {0,
-        1,0}, w(fixed=true, start=1))
-              annotation (Placement(transformation(extent={{-62,10},{-42,30}})));
+    Modelica.Mechanics.MultiBody.Joints.Revolute revFix(n(displayUnit="1") = {1,
+        0,0}, w(fixed=true, start=0))
+      annotation (Placement(transformation(extent={{-62,10},{-42,30}})));
   algorithm
 
   equation
 
 
-    connect(world.frame_b, revolute.frame_a) annotation (Line(
+    connect(world.frame_b, revFix.frame_a) annotation (Line(
         points={{-92,20},{-62,20}},
         color={95,95,95},
         thickness=0.5));
-    connect(ModalBody.frame_ref, revolute.frame_b) annotation (Line(
+    connect(ModalBody.frame_ref, revFix.frame_b) annotation (Line(
         points={{-20,20},{-42,20}},
         color={95,95,95},
         thickness=0.5));
@@ -750,7 +780,7 @@ Results of the model SimplePlate
   </tr>
 </table>
 </html>"),   experiment(
-        StopTime=1,
+        StopTime=10,
         Tolerance=1e-06,
         __Dymola_Algorithm="Dassl"),
       experimentSetupOutput,
