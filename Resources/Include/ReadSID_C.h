@@ -408,53 +408,53 @@ void* SIDFileConstructor_C(const char* fileName)
 			init = 1;
 			sid->nodes = calloc(sizeof(node), sid->numNodes);
 		}
-		else if (strstr(line, "refmod")) {
+		if (strstr(line, "refmod")) {
 			parseRefMod(line, bufferSize, sidFile, sid);
 		}
 		else if (strstr(line, "frame")) {
 			parseNodes(line, bufferSize, sidFile, sid);
 		}
-		else if (strstr(line, "mdCM ")) {
+		else if (strstr(line, "mdCM")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->mdCM = t;
 		}
-		else if (strstr(line, "J ")) {
+		else if (strstr(line, "J")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->J = t;
 		}
-		else if (strstr(line, "Ct ")) {
+		else if (strstr(line, "Ct")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ct = t;
 		}
-		else if (strstr(line, "Cr ")) {
+		else if (strstr(line, "Cr")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Cr = t;
 		}
-		else if (strstr(line, "Me ")) {
+		else if (strstr(line, "Me")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Me = t;
 		}
-		else if (strstr(line, "Gr ")) {
+		else if (strstr(line, "Gr")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Gr = t;
 		}
-		else if (strstr(line, "Ge ")) {
+		else if (strstr(line, "Ge")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ge = t;
 		}
-		else if (strstr(line, "Oe ")) {
+		else if (strstr(line, "Oe")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Oe = t;
 		}
-		else if (strstr(line, "ksigma ")) {
+		else if (strstr(line, "ksigma")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->ksigma = t;
 		}
-		else if (strstr(line, "Ke ")) {
+		else if (strstr(line, "Ke")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ke = t;
 		}
-		else if (strstr(line, "De ")) {
+		else if (strstr(line, "De")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->De = t;
 		}
