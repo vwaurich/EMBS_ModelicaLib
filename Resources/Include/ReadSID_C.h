@@ -430,6 +430,8 @@ void* SIDFileConstructor_C(const char* fileName)
 			parseFirstLine(line, sid);
 			init = 1;
 			sid->nodes = calloc(sizeof(node), sid->numNodes);
+			//skip the rest of the first line
+			fgets(line, bufferSize, sidFile); 
 		}
 		if (strstr(line, "refmod")) {
 			parseRefMod(line, bufferSize, sidFile, sid);
@@ -481,18 +483,9 @@ void* SIDFileConstructor_C(const char* fileName)
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->De = t;
 		}
-
-		//puts(line);
 	}
 	fclose(sidFile);
-	ModelicaFormatMessage("Read SID FIle %s %f \n",fileName,sid->mass);
-	//double d = sid->mass;
-    //void* p = sid;
-	//SID_Data* s = (SID_Data*)p;
-	//ModelicaFormatMessage("CAsting was fine % f%f \n",d,fileName,s->mass);
-	//extObj* e = calloc(sizeof(extObj),1);
-	//e->sid = sid;
-	
+	ModelicaFormatMessage("Read SID FIle %s , mass is %f\n",fileName,sid->mass);
 	return (void*)sid;
 }
 
