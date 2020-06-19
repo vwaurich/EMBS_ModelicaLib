@@ -65,7 +65,7 @@ package EMBSlib
         parameter Integer numModes = 3 "the number of modes given in the SID file";
         parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
         constant Integer nr0 = 3;
-        parameter Integer nq = numNodes;
+        parameter Integer nq = numModes;
 
         parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
         //mass
@@ -75,7 +75,25 @@ package EMBSlib
         //mdCM
         parameter Real mdCM_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0( sid, "mdCM", nr0, 1) annotation (Evaluate=true);
         parameter Real mdCM_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1(sid,   "mdCM", nr0, nq, 1) annotation (Evaluate=true);
+        Real mdCM [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,mdCM_M0,mdCM_M1,q);
 
+        Real q[nq] = {0.1,0.1,0.1};
+
+
+
+    Components.Node node(sid=sid)
+      annotation (Placement(transformation(extent={{32,0},{52,22}})));
+    inner Modelica.Mechanics.MultiBody.World world
+      annotation (Placement(transformation(extent={{-48,-24},{-28,-4}})));
+    Modelica.Blocks.Sources.RealExpression qIn[3](y=q)
+      annotation (Placement(transformation(extent={{-66,42},{-46,62}})));
+  equation
+    connect(world.frame_b, node.frame_a) annotation (Line(
+        points={{-28,-14},{32,-14},{32,4.84}},
+        color={95,95,95},
+        thickness=0.5));
+    connect(qIn.y, node.q) annotation (Line(points={{-45,52},{-6,52},{-6,10.78},{31.8,
+            10.78}}, color={0,0,127}));
           annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
   end TestSIDRead;
 
@@ -97,6 +115,7 @@ package EMBSlib
           Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation (Placement(transformation(extent={{84,-16},
                     {116,16}})));
 
+          Node nodes[numNodes](each sid=sid, each nq=nq, nodeArrayIdx = 1:numNodes, each deformationScalingFactor=deformationScalingFactor, each sphereDiameter=sphereDiameter) annotation (Placement(transformation(extent={{-10,-4},{10,16}})));
 
           Real q[nq]( start=zeros(nq))  "modal coordinates";
           Real qd[nq]( start=zeros(nq));
@@ -135,11 +154,6 @@ package EMBSlib
 
           Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
           Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:numNodes);
-
-          Node nodes[numNodes](each sid=sid, each nq=nq, nodeArrayIdx = 1:numNodes,
-        each deformationScalingFactor=deformationScalingFactor, each sphereDiameter=sphereDiameter)                          annotation (Placement(transformation(extent={{-10,-4},
-                    {10,16}})));
-
 
           Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
             annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
@@ -226,10 +240,8 @@ package EMBSlib
           outer Modelica.Mechanics.MultiBody.World world
         annotation (Placement(transformation(extent={{-100,80},{-80,100}})));
 
-          Modelica.SIunits.Torque[3] Tg = cross(Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,g_0),cm[:,1]);
-
     equation
-          qd = der(q);
+         qd = der(q);
 
          //kinematic equations
          M_t +k_omega_t = -f_rest;
@@ -237,7 +249,6 @@ package EMBSlib
          M_q + k_omega_q + k_q = hd_e;
 
          for i in 1:numNodes loop
-
           connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
           connect(nodes[i].frame_b, frame_node[i]) annotation (Line(
               points={{10,0.2},{25,0.2},{25,0},{100,0}},
@@ -266,7 +277,23 @@ package EMBSlib
           points={{80,48},{62,48},{62,0},{100,0}},
           color={95,95,95},
           thickness=0.5));
-            annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
+            annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}), Icon(
+            graphics={
+            Line(points={{-96,0},{-58,44},{-24,0},{-6,52},{-58,44},{-36,82},{-6,
+                  52},{24,60},{-36,82},{52,78},{24,60},{56,20},{-6,52},{24,-18},
+                  {-24,0},{-96,0},{-60,-42},{-24,0},{-20,-32},{-60,-42},{-32,
+                  -66},{-20,-32},{8,-54},{-32,-66},{44,-76},{8,-54},{24,-18},{
+                  44,-76},{68,-32},{24,-18},{56,20},{52,78},{86,28},{56,20},{68,
+                  -32},{98,0},{86,28},{68,-32}}, color={28,108,200}),
+            Line(points={{-20,-32},{24,-18}}, color={28,108,200}),
+            Text(
+              extent={{-64,118},{68,84}},
+              lineColor={28,108,200},
+              textString="%numNodes nodes"),
+            Text(
+              extent={{-70,-74},{78,-116}},
+              lineColor={28,108,200},
+              textString="%numModes modes")}));
     end EMBS_Body;
 
     model Node
@@ -278,7 +305,6 @@ package EMBSlib
           parameter Real deformationScalingFactor= 1;
           parameter Boolean animation = true annotation (Dialog(
               tab="Animation"));
-
 
           //origin (if bodies are attached to the nodes, origin has to be derived due to index reduction, keeping it as a parameter works)
           parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
@@ -304,30 +330,29 @@ package EMBSlib
           parameter Real AP_M1[nr0,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "AP",nodeArrayIdx, nr0, nq, nr0) annotation (Evaluate=true);
           Real AP [nr0,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
 
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
+            annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
+
+          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b
+            annotation (Placement(transformation(extent={{84,-74},{116,-42}})));
 
           Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"
             annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
           Real q_d[nq] = der(q);
 
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
-            annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
-
           Modelica.SIunits.Force f[nr0] = frame_b.f "external force applied";
 
           Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
 
-
           Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f+transpose(psi)*t;
-          Modelica.SIunits.Torque hdt_i[nr0] = (origin+u).*f+t;
-
-
 
           parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
             "Diameter of sphere" annotation (Dialog(
               tab="Animation",
               group="if animation = true",
               enable=animation));
-                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
+
+          Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
         r=frame_b.r_0,
          shapeType="sphere",
          length=sphereDiameter,
@@ -338,8 +363,7 @@ package EMBSlib
 
 
 
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b
-            annotation (Placement(transformation(extent={{84,-74},{116,-42}})));
+
     protected
           outer Modelica.Mechanics.MultiBody.World world
             annotation (Placement(transformation(extent={{-98,60},{-78,80}})));
@@ -348,7 +372,6 @@ package EMBSlib
           Connections.branch(frame_a.R, frame_b.R);
           assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
             "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
-
 
           frame_b.r_0 = frame_a.r_0 +  Modelica.Mechanics.MultiBody.Frames.resolve1(frame_a.R, origin+u);
 
@@ -364,16 +387,6 @@ package EMBSlib
               Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u), frame_b.f);
           end if;
 
-          /*
-          frame_b.r_0 = frame_a.r_0+origin+u;
-          frame_b.R.T = frame_a.R.T * R_theta.T;
-          frame_b.R.w = frame_a.R.w;
-
-          //Force and torque balance 
-          zeros(3) = frame_a.f + frame_b.f;
-          zeros(3) = frame_a.t + frame_b.t;
-*/
-          //connect(frame_a, frame_b) annotation (Line(      points={{-100,-56},{-2,-56},{-2,-58},{100,-58}},      color={95,95,95},      thickness=0.5));
           annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
             Ellipse(
               extent={{-54,50},{54,-58}},

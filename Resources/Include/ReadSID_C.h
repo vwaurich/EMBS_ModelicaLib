@@ -26,7 +26,7 @@ typedef struct
 	double* M0;// zero order matrix, nrow X ncol
 	double* M1;// first order matrix, nrow X nq X ncol
 	double* Mn;// higher order matrix
-} taylor; // = class taylor
+} taylor;
 
 typedef struct
 {
@@ -55,13 +55,11 @@ typedef struct {
 	taylor ksigma;
 	taylor Ke;
 	taylor De;
-	//int currNodeIdx;
 } SID_Data;
 
 typedef struct{
   SID_Data* sid;
 } extObj;
-
 
 
 //printing
@@ -381,9 +379,34 @@ taylor getNodeTaylorByName(node* node, const char* name)
 }
 
 
+void freeTaylor(taylor* t){
+	free(t->M0);
+	free(t->M1);
+	free(t->Mn);
+	}
+
 
 void SIDFileDestructor_C(void* p_sid) {
-	//SID_Data* sid = (SID_Data*)p_sid;
+	SID_Data* sid = (SID_Data*)p_sid;
+	for (int n=0;n<sid->numNodes;n++){
+		freeTaylor(&sid->nodes[n].orig);
+		freeTaylor(&sid->nodes[n].phi);
+		freeTaylor(&sid->nodes[n].psi);
+		freeTaylor(&sid->nodes[n].AP);
+	}
+	free(sid->nodes);
+	freeTaylor(&sid->mdCM);
+	freeTaylor(&sid->J);
+	freeTaylor(&sid->Ct);
+	freeTaylor(&sid->Cr);
+	freeTaylor(&sid->Me);
+	freeTaylor(&sid->Gr);
+	freeTaylor(&sid->Ge);
+	freeTaylor(&sid->Oe);
+	freeTaylor(&sid->ksigma);
+	freeTaylor(&sid->Ke);
+	freeTaylor(&sid->De);
+	free(sid);
 }
 
 void* SIDFileConstructor_C(const char* fileName)
