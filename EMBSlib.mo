@@ -5,9 +5,10 @@ package EMBSlib
     extends Modelica.Icons.Example;
 
     Components.EMBS_Body eMBS_Body(
-      numNodes=5,
-      numModes=8,
-      SIDfileName="E:/Projekte/VIBROSIM_2/MOR_Test/Balken_2M.SID_FEM")
+      numNodes=6,
+      numModes=11,
+      SIDfileName=Modelica.Utilities.Files.loadResource(
+          "modelica://EMBSlib/Resources/Data/Balken.SID_FEM"))
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
     inner Modelica.Mechanics.MultiBody.World world(g=1,
       n(displayUnit="1") = {0,0,-1})
@@ -15,7 +16,7 @@ package EMBSlib
 
     Modelica.Mechanics.MultiBody.Forces.WorldForce force
       annotation (Placement(transformation(extent={{6,-48},{26,-28}})));
-    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,0,1e5*time})
+    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,1e5*time,0})
       annotation (Placement(transformation(extent={{-86,-58},{-66,-38}})));
   equation
     connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
@@ -26,7 +27,7 @@ package EMBSlib
     connect(fIn.y, force.force) annotation (Line(points={{-65,-48},{-32,-48},{-32,
             -38},{4,-38}}, color={0,0,127}));
     connect(force.frame_b, eMBS_Body.frame_node[2]) annotation (Line(
-        points={{26,-38},{36,-38},{36,-40},{52,-40},{52,9.36},{0,9.36}},
+        points={{26,-38},{36,-38},{36,-40},{52,-40},{52,9.2},{0,9.2}},
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -35,7 +36,9 @@ package EMBSlib
   model EMBS_bodyExample
     extends Modelica.Icons.Example;
 
-    Components.EMBS_Body eMBS_Body
+    Components.EMBS_Body eMBS_Body(SIDfileName=
+          Modelica.Utilities.Files.loadResource(
+          "modelica://EMBSlib/Resources/Data/cartopPragV32.SID_FEM"))
         annotation (Placement(transformation(extent={{-20,0},{0,20}})));
 
     inner Modelica.Mechanics.MultiBody.World world(g=9.81,
@@ -57,16 +60,35 @@ package EMBSlib
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
   end EMBS_bodyExample;
 
+  model TestSIDRead
+        parameter Integer numNodes = 9;
+        parameter Integer numModes = 3 "the number of modes given in the SID file";
+        parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+        constant Integer nr0 = 3;
+        parameter Integer nq = numNodes;
+
+        parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
+        //mass
+        parameter Modelica.SIunits.Mass mass = EMBSlib.ExternalFunctions_C.getMass(sid) annotation(Evaluate=true);
+        parameter Modelica.SIunits.Mass mI[nr0,nr0] = identity(nr0)*mass;
+
+        //mdCM
+        parameter Real mdCM_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0( sid, "mdCM", nr0, 1) annotation (Evaluate=true);
+        parameter Real mdCM_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1(sid,   "mdCM", nr0, nq, 1) annotation (Evaluate=true);
+
+          annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
+  end TestSIDRead;
+
   package Components
     model EMBS_Body
           parameter Integer numNodes = 9;
           parameter Integer numModes = 3 "the number of modes given in the SID file";
-          parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+          parameter String SIDfileName =  Modelica.Utilities.Files.loadResource("modelica://EMBSlib/Resources/Data/cartopPragV32.SID_FEM");
 
           parameter Boolean animation = true annotation (Dialog(    tab="Animation"));
-          parameter Real deformationScalingFactor= 1 annotation(dialog(tab="Animation"));
-          parameter Real sphereDiameter = 0.1 annotation(dialog(tab="Animation"));
-          parameter Real coordinateSystemScalingFactor = 0.2 annotation(dialog(tab="Animation"));
+          parameter Real deformationScalingFactor= 1 annotation(Dialog(tab="Animation"));
+          parameter Real sphereDiameter = 0.1 annotation(Dialog(tab="Animation"));
+          parameter Real coordinateSystemScalingFactor = 0.2 annotation(Dialog(tab="Animation"));
 
           constant Integer nr0 = 3 "dimension in space";
 
@@ -76,8 +98,8 @@ package EMBSlib
                     {116,16}})));
 
 
-          Real q[nq] "modal coordinates";
-          Real qd[nq] = der(q);
+          Real q[nq]( start=zeros(nq))  "modal coordinates";
+          Real qd[nq]( start=zeros(nq));
           Real qdd[nq] = der(qd);
 
           Modelica.SIunits.Position r_0[3](start={0,0,0}) = frame_ref.r_0  "position of frame of reference";
@@ -207,6 +229,8 @@ package EMBSlib
           Modelica.SIunits.Torque[3] Tg = cross(Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,g_0),cm[:,1]);
 
     equation
+          qd = der(q);
+
          //kinematic equations
          M_t +k_omega_t = -f_rest;
          M_r + k_omega_r = -t_rest;
@@ -484,10 +508,10 @@ package EMBSlib
             input Real[nq] q;
             output Real[nr, nr] Mout;
     protected
-            Real[3,3] aux;
+            Real[nr,nr] aux;
             Integer c=1;
           algorithm
-            Mout := zeros(3,3);
+            Mout := zeros(nr,nr);
             for i in 1:nq loop
               c :=(i - 1)*3;//column index
               aux[:,1] := Min[:,c+1];
