@@ -553,14 +553,8 @@ taylor getTaylorByName(SID_Data* sid, const char* name)
 void getM0(void* p_sid, const char* taylorName, double* m0, size_t nr, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
 	taylor t = getTaylorByName((sid), taylorName);
-	int i = (int)nc;
-
-	ModelicaFormatMessage("aha getM0 %s [%d, %d]  at %p  have dims %d %d  and %d %d \n",taylorName,nr,nc,t, t.nrow, t.ncol,nr==t.nrow,i==t.ncol);
-	ModelicaFormatMessage("compare 3 mit %d %d %d \n",3==3,3==nr,3==t.nrow);
-	ModelicaFormatMessage("compare 1 mit %d %d %d \n",1==1,1==i,1==t.ncol);
-	ModelicaFormatMessage("nc %d \n",nc);
 	if(!((int)nr==t.nrow && (int)nc==t.ncol)){
-		ModelicaFormatMessage(" uhu getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
+		ModelicaFormatMessage(" getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
 	}
 	else{
 		int s = sizeof(double)*(int)nr*(int)nc;

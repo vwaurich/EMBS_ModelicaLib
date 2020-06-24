@@ -9,25 +9,26 @@ package EMBSlib
       numModes=11,
       SIDfileName=Modelica.Utilities.Files.loadResource(
           "modelica://EMBSlib/Resources/Data/Balken.SID_FEM"))
-        annotation (Placement(transformation(extent={{-20,0},{0,20}})));
+        annotation (Placement(transformation(extent={{10,-2},{30,18}})));
     inner Modelica.Mechanics.MultiBody.World world(g=1,
       n(displayUnit="1") = {0,0,-1})
         annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
 
     Modelica.Mechanics.MultiBody.Forces.WorldForce force
       annotation (Placement(transformation(extent={{6,-48},{26,-28}})));
-    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,1e5*time,0})
+    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,0,1e4*time})
       annotation (Placement(transformation(extent={{-86,-58},{-66,-38}})));
   equation
     connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
-        points={{-20,10},{-80,10}},
+        points={{10,8},{-46,8},{-46,10},{-80,10}},
         color={95,95,95},
         thickness=0.5));
 
     connect(fIn.y, force.force) annotation (Line(points={{-65,-48},{-32,-48},{-32,
             -38},{4,-38}}, color={0,0,127}));
-    connect(force.frame_b, eMBS_Body.frame_node[2]) annotation (Line(
-        points={{26,-38},{36,-38},{36,-40},{52,-40},{52,9.2},{0,9.2}},
+    connect(force.frame_b, eMBS_Body.frame_node[3]) annotation (Line(
+        points={{26,-38},{44,-38},{44,-30},{58,-30},{58,7.73333},{30,7.73333}},
+
         color={95,95,95},
         thickness=0.5));
     annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
@@ -161,12 +162,14 @@ package EMBSlib
           Modelica.SIunits.Torque[3] t_rest;
           Modelica.SIunits.Force[3] f_rest;
           Modelica.Mechanics.MultiBody.Forces.WorldForce force(resolveInFrame=
-            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, N_to_m=0.1)
+            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, N_to_m=
+            100)
         annotation (Placement(transformation(extent={{-86,18},{-66,38}})));
           Modelica.Blocks.Sources.RealExpression f_elast1[nr0](y=f_rest)
         annotation (Placement(transformation(extent={{-124,16},{-104,36}})));
           Modelica.Mechanics.MultiBody.Forces.WorldTorque torque(resolveInFrame=
-            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, Nm_to_m=0.1)
+            Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b, Nm_to_m=
+            1)
         annotation (Placement(transformation(extent={{-88,46},{-68,66}})));
           Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest)
         annotation (Placement(transformation(extent={{-124,46},{-104,66}})));
@@ -434,7 +437,6 @@ package EMBSlib
   end SID_File;
 
   package ExternalFunctions_C
-    extends Modelica.Icons.FunctionsPackage;
 
      function getMass
       input EMBSlib.SID_File sid;
@@ -491,7 +493,6 @@ package EMBSlib
   end ExternalFunctions_C;
 
   package MatrixFunctions
-      extends Modelica.Icons.FunctionsPackage;
 
       function getTaylorFunction
             input Integer nr;
@@ -510,7 +511,6 @@ package EMBSlib
               M := M+aux;
             end for;
             M := M0 +M;
-            annotation(derivative=EMBSlib.MatrixFunctions.getTaylorFunction_d);
       end getTaylorFunction;
 
           function getGrMatrix
@@ -533,49 +533,6 @@ package EMBSlib
               Mout := Mout+aux*q[i];
             end for;
           end getGrMatrix;
-
-      function getTaylorFunction_d
-            input Integer nr;
-            input Integer nq;
-            input Integer nc;
-            input Real[nr,nc] M0;
-            input Real[nr,nq,nc] M1;
-            input Real[nq] q;
-            input Real[nq] der_q;
-            output Real[nr,nc] der_M;
-    protected
-            Real[nr,nc] aux;
-      algorithm
-            der_M := zeros(nr,nc);
-            for i in 1:nq loop
-              aux := M1[:,i,:]*q[i];
-              der_M := der_M+aux;
-            end for;
-            der_M := M0 +der_M;
-
-            annotation(derivative(order=2)=EMBSlib.MatrixFunctions.getTaylorFunction_2d);
-      end getTaylorFunction_d;
-
-      function getTaylorFunction_2d
-            input Integer nr;
-            input Integer nq;
-            input Integer nc;
-            input Real[nr,nc] M0;
-            input Real[nr,nq,nc] M1;
-            input Real[nq] q;
-            input Real[nq] der_q;
-            input Real[nq] der_2_q;
-            output Real[nr,nc] der_2_M;
-    protected
-            Real[nr,nc] aux;
-      algorithm
-            der_2_M := zeros(nr,nc);
-            for i in 1:nq loop
-              aux := M1[:,i,:]*q[i];
-              der_2_M := der_2_M+aux;
-            end for;
-            der_2_M := M0 +der_2_M;
-      end getTaylorFunction_2d;
 
           function getGeMatrix
             input Integer nr;//(for Gr=3 for Ge=nq)
