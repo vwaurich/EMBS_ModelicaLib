@@ -387,6 +387,7 @@ void freeTaylor(taylor* t){
 
 
 void SIDFileDestructor_C(void* p_sid) {
+	/*
 	SID_Data* sid = (SID_Data*)p_sid;
 	for (int n=0;n<sid->numNodes;n++){
 		freeTaylor(&sid->nodes[n].orig);
@@ -407,6 +408,7 @@ void SIDFileDestructor_C(void* p_sid) {
 	freeTaylor(&sid->Ke);
 	freeTaylor(&sid->De);
 	free(sid);
+	*/
 }
 
 void* SIDFileConstructor_C(const char* fileName)
@@ -547,17 +549,22 @@ taylor getTaylorByName(SID_Data* sid, const char* name)
 	}
 }
 
-
 //M0 for modal objects
 void getM0(void* p_sid, const char* taylorName, double* m0, size_t nr, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
 	taylor t = getTaylorByName((sid), taylorName);
-	//ModelicaFormatMessage("getM0 %s [%d, %d]  at %p\n",taylorName,nr,nc,t);
-	if(nr!=t.nrow || nc!=t.ncol){
-		ModelicaFormatMessage(" getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
+	int i = (int)nc;
+
+	ModelicaFormatMessage("aha getM0 %s [%d, %d]  at %p  have dims %d %d  and %d %d \n",taylorName,nr,nc,t, t.nrow, t.ncol,nr==t.nrow,i==t.ncol);
+	ModelicaFormatMessage("compare 3 mit %d %d %d \n",3==3,3==nr,3==t.nrow);
+	ModelicaFormatMessage("compare 1 mit %d %d %d \n",1==1,1==i,1==t.ncol);
+	ModelicaFormatMessage("nc %d \n",nc);
+	if(!((int)nr==t.nrow && (int)nc==t.ncol)){
+		ModelicaFormatMessage(" uhu getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
 	}
 	else{
-	  memcpy(m0,t.M0,sizeof(double)*nr*nc);
+		int s = sizeof(double)*(int)nr*(int)nc;
+	    memcpy(m0,t.M0,s);
 	}
 }
 //M1 for modal objects
@@ -566,11 +573,12 @@ void getM1(void* p_sid, const char* taylorName, double* m1, size_t nr, size_t nq
 	//ModelicaFormatMessage("getM1 %s [%d, %d,  %d]\n",taylorName,nr,nq,nc);
 	taylor t = getTaylorByName((sid), taylorName);
 
-	if(nr!=t.nrow || nc!=t.ncol || nq!=t.nq){
+	if((int)nr!=t.nrow || (int)nc!=t.ncol || (int)nq!=t.nq){
 		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t.nrow,t.nq,t.ncol);
 	}
 	else{
-	  memcpy(m1,t.M1,sizeof(double)*nr*nc*nq);
+	  int s = sizeof(double)*(int)nr*(int)nc*(int)nq;
+	  memcpy(m1,t.M1,s);
 	}
 }
 
@@ -582,16 +590,17 @@ void getM0Node(void* p_sid, const char* taylorName, int nodeIdx, double* m0, siz
 	}
 	node n = sid->nodes[nodeIdx-1];
 	taylor t = getNodeTaylorByName(&n, taylorName);
-	if(nr!=t.nrow || nc!=t.ncol){
+	if((int)nr!=t.nrow || (int)nc!=t.ncol){
 		ModelicaFormatMessage(" getM0Node: the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n", nr, nc, t.nrow,t.ncol);
 	}
 	else{
-	  memcpy(m0,t.M0,sizeof(double)*nr*nc);
+	  int s = sizeof(double)*(int)nr*(int)nc;
+	  memcpy(m0,t.M0,s);
 	}
 	
 	
 }
-//mdCM
+//M1 for node object
 void getM1Node(void* p_sid, const char* taylorName, int nodeIdx, double* m1, size_t nr, size_t nq, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
 	if (nodeIdx > sid->numNodes){
@@ -600,11 +609,12 @@ void getM1Node(void* p_sid, const char* taylorName, int nodeIdx, double* m1, siz
 	node n = sid->nodes[nodeIdx-1];
 	taylor t = getNodeTaylorByName(&n, taylorName);
 			
-	if(nr!=t.nrow || nc!=t.ncol || nq!=t.nq){
+	if((int)nr!=t.nrow || (int)nc!=t.ncol || (int)nq!=t.nq){
 		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t.nrow,t.nq,t.ncol);
 	}
 	else{
-	  memcpy(m1,t.M1,sizeof(double)*nr*nc*nq);
+	  int s = sizeof(double)*(int)nr*(int)nc*(int)nq;
+	  memcpy(m1,t.M1,s);
 	}
 
 }
