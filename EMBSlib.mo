@@ -306,6 +306,7 @@ package EMBSlib
           parameter Integer nr0 = 3;
 
           parameter Real deformationScalingFactor= 1;
+          parameter Real coordinateSystemScalingFactor=1;
           parameter Boolean animation = true annotation (Dialog(
               tab="Animation"));
 
@@ -326,7 +327,7 @@ package EMBSlib
           parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
           parameter Real phi [nr0,nq] = phi_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
           Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement" annotation(each stateSelect=StateSelect.never);
-
+          Modelica.SIunits.Position u_abs = Modelica.Math.Vectors.length(u);
 
           //AP
           parameter Real AP_M0[nr0,nr0] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation (Evaluate=true);
@@ -356,7 +357,7 @@ package EMBSlib
               enable=animation));
 
           Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
-        r=frame_b.r_0,
+        r=frame_b.r_0-sphereDiameter*0.5*{1,0,0},
          shapeType="sphere",
          length=sphereDiameter,
          width=sphereDiameter,
