@@ -1,6 +1,6 @@
 within EMBSlib;
 package ExternalFunctions_C
-  extends Modelica.Icons.FunctionsPackage;
+  extends Modelica.Icons.Package;
 
    function getNodeArrayIdx
     input EMBSlib.SID_File sid;

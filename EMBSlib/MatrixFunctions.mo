@@ -1,6 +1,6 @@
 within EMBSlib;
 package MatrixFunctions
-    extends Modelica.Icons.FunctionsPackage;
+    extends Modelica.Icons.Package;
 
     function getTaylorFunction
           input Integer nr;
