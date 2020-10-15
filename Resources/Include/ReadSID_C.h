@@ -55,7 +55,6 @@ typedef struct {
 	taylor ksigma;
 	taylor Ke;
 	taylor De;
-	//int currNodeIdx;
 } SID_Data;
 
 typedef struct{
@@ -63,13 +62,14 @@ typedef struct{
 } extObj;
 
 
-
 //printing
 //=================================
 
 void printM_2(double* M, int dimRow, int dimCol) {
-	for (int r = 1; r <= dimRow; r++) {
-		for (int c = 1; c <= dimCol; c++) {
+	int r =1;
+	int c = 1;
+	for (r = 1; r <= dimRow; r++) {
+		for (c = 1; c <= dimCol; c++) {
 			int i = matrix2Index(r, c, dimRow, dimCol);
 			ModelicaFormatMessage("M[%d,%d]:%d = %f\n", r, c, i, M[i]);
 		}
@@ -78,9 +78,12 @@ void printM_2(double* M, int dimRow, int dimCol) {
 }
 
 void printM_3(double* M, int dimRow, int dimQ, int dimCol) {
-	for (int r = 1; r <= dimRow; r++) {
-		for (int c = 1; c <= dimCol; c++) {
-			for (int q = 1; q <= dimQ; q++) {
+	int r = 1;
+	int c = 1;
+	int q = 1;
+	for (r = 1; r <= dimRow; r++) {
+		for (c = 1; c <= dimCol; c++) {
+			for (q = 1; q <= dimQ; q++) {
 				int i = matrix3Index(r, q, c, dimRow, dimQ, dimCol);
 				ModelicaFormatMessage("M[%d,%d,%d]:%d = %f\n", r, q, c, i, M[i]);
 			}
@@ -105,6 +108,7 @@ int getNextInteger(char* line, int startToken, int* value) {
 	int found = 0;
 	char intTokens[6] = "";
 	char c;
+	int v;
 	while (i < len) {
 		c = line[i];
 		while (isdigit(c)) {
@@ -119,7 +123,7 @@ int getNextInteger(char* line, int startToken, int* value) {
 		}
 		i++;
 	}
-	int v = atoi(&intTokens);
+	v = atoi(&intTokens);
 	*value = v;
 	if (found)
 		return i;
@@ -135,6 +139,9 @@ int getNextReal(char* line, int startToken, double* value) {
 	char exponentToken[20] = "";
 	char c;
 	int seq = 0;
+	double base;
+	double exponent;
+	double d;
 	while (i < len) {
 		c = line[i];
 		//start real retrieval
@@ -166,9 +173,9 @@ int getNextReal(char* line, int startToken, double* value) {
 		}
 		i++;
 	}
-	double base = atof(&baseToken);
-	double exponent = atof(&exponentToken);
-	double d = base * pow(10, exponent);
+	base = atof(&baseToken);
+	exponent = atof(&exponentToken);
+	d = base * pow(10, exponent);
 	*value = d;
 	if (found)
 		return i;
@@ -206,7 +213,14 @@ void parseRefMod(char* line, int bufferSize, FILE* file, SID_Data* sid) {
 }
 
 taylor initTaylor(int order, int nr, int ncol, int nq, int nqn, int structure) {
-	taylor t = { .order = 0,.nrow = nr,.ncol = ncol,.nq = nq,.nqn = nqn,.structure = structure,.M0 = NULL,.M1 = NULL,.Mn = NULL };
+	taylor t;// = { .order = 0,.nrow = nr,.ncol = ncol,.nq = nq,.nqn = nqn,.structure = structure,.M0 = NULL,.M1 = NULL,.Mn = NULL };
+	t.order = 0;
+	t.nrow = nr;
+	t.ncol = ncol;
+	t.nq = nq;
+	t.nqn = nqn;
+	t.structure = structure;
+	t.Mn = NULL;
 	t.M0 = calloc(t.nrow*t.ncol, sizeof(double));
 	t.M1 = calloc(t.nrow*t.nq*t.ncol, sizeof(double));
 	if (t.nqn != 0)
@@ -270,11 +284,12 @@ taylor parseTaylor(char* line, int bufferSize, FILE* file) {
 			int idx2 = 0;
 			int tokenIdx = 0;
 			double val = 0.0;
+			int i;
 			tokenIdx = getNextInteger(line, tokenIdx, &idx1);// this is the 0 in m0
 			tokenIdx = getNextInteger(line, tokenIdx + 1, &idx1);
 			tokenIdx = getNextInteger(line, tokenIdx + 1, &idx2);
 			getNextReal(line, tokenIdx, &val);
-			int i = matrix2Index(idx1, idx2, nrow, ncol);
+			i = matrix2Index(idx1, idx2, nrow, ncol);
 			//ModelicaFormatMessage("set M0 i %d  = %f\n",i,val);
 			//ModelicaFormatMessage("set M0 i %d  = %f\n",i,val);
 			t.M0[i] = val;
@@ -284,6 +299,7 @@ taylor parseTaylor(char* line, int bufferSize, FILE* file) {
 			int idx1 = 0;
 			int idx2 = 0;
 			int idx3 = 0;
+			int i = 0;
 			int tokenIdx = 0;
 			double val = 0.0;
 			tokenIdx = getNextInteger(line, tokenIdx, &idx1);// this is the 0 in m0
@@ -291,7 +307,7 @@ taylor parseTaylor(char* line, int bufferSize, FILE* file) {
 			tokenIdx = getNextInteger(line, tokenIdx + 1, &idx2);
 			tokenIdx = getNextInteger(line, tokenIdx + 1, &idx3);
 			getNextReal(line, tokenIdx, &val);
-			int i = matrix3Index(idx1, idx2, idx3, nrow, nq, ncol);
+			i = matrix3Index(idx1, idx2, idx3, nrow, nq, ncol);
 			//ModelicaFormatMessage("set M1 i %d  = %f\n", i, val);
 			t.M1[i] = val;
 		}
@@ -381,32 +397,65 @@ taylor getNodeTaylorByName(node* node, const char* name)
 }
 
 
+void freeTaylor(taylor* t){
+	free(t->M0);
+	free(t->M1);
+	free(t->Mn);
+	}
+
 
 void SIDFileDestructor_C(void* p_sid) {
-	//SID_Data* sid = (SID_Data*)p_sid;
+	/*
+	SID_Data* sid = (SID_Data*)p_sid;
+	for (int n=0;n<sid->numNodes;n++){
+		freeTaylor(&sid->nodes[n].orig);
+		freeTaylor(&sid->nodes[n].phi);
+		freeTaylor(&sid->nodes[n].psi);
+		freeTaylor(&sid->nodes[n].AP);
+	}
+	free(sid->nodes);
+	freeTaylor(&sid->mdCM);
+	freeTaylor(&sid->J);
+	freeTaylor(&sid->Ct);
+	freeTaylor(&sid->Cr);
+	freeTaylor(&sid->Me);
+	freeTaylor(&sid->Gr);
+	freeTaylor(&sid->Ge);
+	freeTaylor(&sid->Oe);
+	freeTaylor(&sid->ksigma);
+	freeTaylor(&sid->Ke);
+	freeTaylor(&sid->De);
+	free(sid);
+	*/
 }
 
 void* SIDFileConstructor_C(const char* fileName)
 {
 	FILE *sidFile;
+	SID_Data* sid;
+    int bufferSize;
+	char *line;
+	int init;
+   	taylor t;
+
 	if ((sidFile = fopen(fileName, "r")) == NULL) {
 		ModelicaFormatMessage("Could not open %s\n", fileName);
 	}
-
-	SID_Data* sid = calloc(1, sizeof(SID_Data));
+	sid = calloc(1, sizeof(SID_Data));
 	ModelicaFormatMessage("Allocated SID struct of size %d\n", sizeof(SID_Data));
 
 	//read line by line ( http://openbook.rheinwerk-verlag.de/c_von_a_bis_z/016_c_ein_ausgabe_funktionen_016.htm#mjcea47bd6d32a4a8f51be329a672845d7 )
-	int bufferSize = 512;
-	char *line = malloc(sizeof(char*) * 512);
+	bufferSize = 512;
+	line = malloc(sizeof(char*) * 512);
 
-	int init = 0;
-	taylor t;
+	init = 0;
 	while (fgets(line, bufferSize, sidFile) != NULL) {
 		if (!init) {
 			parseFirstLine(line, sid);
 			init = 1;
 			sid->nodes = calloc(sizeof(node), sid->numNodes);
+			//skip the rest of the first line
+			fgets(line, bufferSize, sidFile); 
 		}
 		if (strstr(line, "refmod")) {
 			parseRefMod(line, bufferSize, sidFile, sid);
@@ -414,62 +463,53 @@ void* SIDFileConstructor_C(const char* fileName)
 		else if (strstr(line, "frame")) {
 			parseNodes(line, bufferSize, sidFile, sid);
 		}
-		else if (strstr(line, "mdCM ")) {
+		else if (strstr(line, "mdCM")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->mdCM = t;
 		}
-		else if (strstr(line, "J ")) {
+		else if (strstr(line, "J")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->J = t;
 		}
-		else if (strstr(line, "Ct ")) {
+		else if (strstr(line, "Ct")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ct = t;
 		}
-		else if (strstr(line, "Cr ")) {
+		else if (strstr(line, "Cr")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Cr = t;
 		}
-		else if (strstr(line, "Me ")) {
+		else if (strstr(line, "Me")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Me = t;
 		}
-		else if (strstr(line, "Gr ")) {
+		else if (strstr(line, "Gr")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Gr = t;
 		}
-		else if (strstr(line, "Ge ")) {
+		else if (strstr(line, "Ge")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ge = t;
 		}
-		else if (strstr(line, "Oe ")) {
+		else if (strstr(line, "Oe")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Oe = t;
 		}
-		else if (strstr(line, "ksigma ")) {
+		else if (strstr(line, "ksigma")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->ksigma = t;
 		}
-		else if (strstr(line, "Ke ")) {
+		else if (strstr(line, "Ke")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->Ke = t;
 		}
-		else if (strstr(line, "De ")) {
+		else if (strstr(line, "De")) {
 			t = parseTaylor(line, bufferSize, sidFile);
 			sid->De = t;
 		}
-
-		//puts(line);
 	}
 	fclose(sidFile);
-	ModelicaFormatMessage("Read SID FIle %s %f \n",fileName,sid->mass);
-	//double d = sid->mass;
-    //void* p = sid;
-	//SID_Data* s = (SID_Data*)p;
-	//ModelicaFormatMessage("CAsting was fine % f%f \n",d,fileName,s->mass);
-	//extObj* e = calloc(sizeof(extObj),1);
-	//e->sid = sid;
-	
+	ModelicaFormatMessage("Read SID FIle %s , mass is %f\n",fileName,sid->mass);
 	return (void*)sid;
 }
 
@@ -484,43 +524,6 @@ double getMass(void* p_sid){
 	return d;
 }
 
-double getNodeArrayIdx_C(void* p_sid, int nodeId){
-	SID_Data* sid = (SID_Data*)p_sid;
-	for (int i=0;i<sid->numNodes;i++){
-		if(nodeId == sid->nodes[i].id){
-			return i+1;
-		}
-	}
-	ModelicaFormatMessage("getNodeArrayIdx_C: Could not find noteIdx %d in nodearray[%d] \n",nodeId, sid->numNodes);
-	return -1;
-}
-
-void getRestNodeIdcs_C(void* p_sid, int* mbsNodes, int nMBSnodes, int* restNodesArrIdxOut, int nRestNodes){
-	SID_Data* sid = (SID_Data*)p_sid;
-	if(sid->numNodes !=(nMBSnodes+nRestNodes))
-		ModelicaFormatMessage("getRestNodeIdcs_C: Number of mbs nodes %d and expected remaining nodes %d is no equal to number of nodes in the SID %d\n",nMBSnodes,nRestNodes,sid->numNodes);
-	
-	int restNodeIdx = 0;
-	for (int i=0;i<sid->numNodes;i++){
-		int foundMBSNode=0;
-		//ModelicaFormatMessage("Check nodeIdx %d = %d\n",i,sid->nodes[i].id);
-		for(int m=0;m<nMBSnodes;m++){
-			int mbsNodeIdx = mbsNodes[m];
-			if(sid->nodes[i].id == mbsNodeIdx){
-				//ModelicaFormatMessage("found %d \n",sid->nodes[i].id);
-				foundMBSNode = 1;
-				break;
-			}
-			else{
-				//ModelicaFormatMessage("%d not in MBS nodes\n",sid->nodes[i].id);
-			}
-		}
-		if(!foundMBSNode){
-			restNodesArrIdxOut[restNodeIdx] = sid->nodes[i].id;
-			restNodeIdx++;
-		}
-	}
-}
 
 
 //Taylor Retrieval
@@ -568,17 +571,16 @@ taylor getTaylorByName(SID_Data* sid, const char* name)
 	}
 }
 
-
 //M0 for modal objects
 void getM0(void* p_sid, const char* taylorName, double* m0, size_t nr, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
 	taylor t = getTaylorByName((sid), taylorName);
-	//ModelicaFormatMessage("getM0 %s [%d, %d]  at %p\n",taylorName,nr,nc,t);
-	if(nr!=t.nrow || nc!=t.ncol){
+	if(!((int)nr==t.nrow && (int)nc==t.ncol)){
 		ModelicaFormatMessage(" getM0: %s the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n",taylorName, nr, nc, t.nrow,t.ncol);
 	}
 	else{
-	  memcpy(m0,t.M0,sizeof(double)*nr*nc);
+		int s = sizeof(double)*(int)nr*(int)nc;
+	    memcpy(m0,t.M0,s);
 	}
 }
 //M1 for modal objects
@@ -587,45 +589,52 @@ void getM1(void* p_sid, const char* taylorName, double* m1, size_t nr, size_t nq
 	//ModelicaFormatMessage("getM1 %s [%d, %d,  %d]\n",taylorName,nr,nq,nc);
 	taylor t = getTaylorByName((sid), taylorName);
 
-	if(nr!=t.nrow || nc!=t.ncol || nq!=t.nq){
+	if((int)nr!=t.nrow || (int)nc!=t.ncol || (int)nq!=t.nq){
 		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t.nrow,t.nq,t.ncol);
 	}
 	else{
-	  memcpy(m1,t.M1,sizeof(double)*nr*nc*nq);
+	  int s = sizeof(double)*(int)nr*(int)nc*(int)nq;
+	  memcpy(m1,t.M1,s);
 	}
 }
 
 //M0 for node object
 void getM0Node(void* p_sid, const char* taylorName, int nodeIdx, double* m0, size_t nr, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
+	node n;
+	taylor t;
 	if (nodeIdx > sid->numNodes){
 		ModelicaFormatMessage(" getM0Node: the given nodeidx  [%d] is bigger than the number of nodes [%d]\n", nodeIdx, sid->numNodes);
 	}
-	node n = sid->nodes[nodeIdx-1];
-	taylor t = getNodeTaylorByName(&n, taylorName);
-	if(nr!=t.nrow || nc!=t.ncol){
+	n = sid->nodes[nodeIdx-1];
+	t = getNodeTaylorByName(&n, taylorName);
+	if((int)nr!=t.nrow || (int)nc!=t.ncol){
 		ModelicaFormatMessage(" getM0Node: the given dimensions [%d, %d] are not equal to the stored matrix dimension [%d %d]\n", nr, nc, t.nrow,t.ncol);
 	}
 	else{
-	  memcpy(m0,t.M0,sizeof(double)*nr*nc);
+	  int s = sizeof(double)*(int)nr*(int)nc;
+	  memcpy(m0,t.M0,s);
 	}
 	
 	
 }
-//mdCM
+//M1 for node object
 void getM1Node(void* p_sid, const char* taylorName, int nodeIdx, double* m1, size_t nr, size_t nq, size_t nc){
 	SID_Data* sid = (SID_Data*)p_sid;
+	node n;
+	taylor t;
 	if (nodeIdx > sid->numNodes){
 		ModelicaFormatMessage(" getM0Node: the given nodeidx  [%d] is bigger than the number of nodes [%d]\n", nodeIdx, sid->numNodes);
 	}
-	node n = sid->nodes[nodeIdx-1];
-	taylor t = getNodeTaylorByName(&n, taylorName);
+	n = sid->nodes[nodeIdx-1];
+	t = getNodeTaylorByName(&n, taylorName);
 			
-	if(nr!=t.nrow || nc!=t.ncol || nq!=t.nq){
+	if((int)nr!=t.nrow || (int)nc!=t.ncol || (int)nq!=t.nq){
 		ModelicaFormatMessage(" getM1: the given dimensions [%d, %d, %d] are not equal to the stored matrix dimension [%d, %d, %d]\n",nr,nq,nc, t.nrow,t.nq,t.ncol);
 	}
 	else{
-	  memcpy(m1,t.M1,sizeof(double)*nr*nc*nq);
+	  int s = sizeof(double)*(int)nr*(int)nc*(int)nq;
+	  memcpy(m1,t.M1,s);
 	}
 
 }
