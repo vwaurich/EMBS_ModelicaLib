@@ -2,432 +2,328 @@ within ;
 package EMBSlib
 
   model EMBS_bodyExample
-    extends Modelica.Icons.Example;
-
-    Components.EMBS_Body eMBS_Body(nodeIdxs={84,107,12,149})
-        annotation (Placement(transformation(extent={{-20,0},{0,20}})));
-
-    inner Modelica.Mechanics.MultiBody.World world(
-      g=9.81,
-      n(displayUnit="1") = {0,0,-1},
-      axisLength=0.02)
-        annotation (Placement(transformation(extent={{-100,0},{-80,20}})));
-
-    Modelica.Mechanics.MultiBody.Forces.WorldForce force
-      annotation (Placement(transformation(extent={{-22,-42},{-2,-22}})));
-    Modelica.Blocks.Sources.RealExpression fIn[3](y={0,0,10*time})
-      annotation (Placement(transformation(extent={{-66,-42},{-46,-22}})));
+   extends Modelica.Icons.Example;
+   Components.EMBS_Body eMBS_Body(SIDfileName=Modelica.Utilities.Files.loadResource(
+    "modelica://EMBSlib/Resources/Data/cartopPragV32.SID_FEM")) annotation(Placement(transformation(extent={{-20,0},{0,20}})));
+  inner Modelica.Mechanics.MultiBody.World world(
+   g=9.81,
+   n(displayUnit="1")={0,0,-1}) annotation(Placement(transformation(extent={{-100,0},{-80,20}})));
+  Modelica.Mechanics.MultiBody.Joints.Revolute revFix(
+   n(displayUnit="1")={1,
+            0,0},
+  w(
+   fixed=true,
+   start=0)) annotation(Placement(transformation(extent={{-58,0},{-38,20}})));
   equation
-    connect(world.frame_b, eMBS_Body.frame_ref) annotation (Line(
-        points={{-80,10},{-20,10}},
-        color={95,95,95},
-        thickness=0.5));
-    connect(fIn.y, force.force)
-      annotation (Line(points={{-45,-32},{-24,-32}}, color={0,0,127}));
-    connect(force.frame_b, eMBS_Body.frame_node[3]) annotation (Line(
-        points={{-2,-32},{22,-32},{22,-36},{44,-36},{44,10},{0,10},{0,10}},
-        color={95,95,95},
-        thickness=0.5));
-    annotation (experiment(StopTime=10, __Dymola_Algorithm="Dassl"));
+   connect(world.frame_b, revFix.frame_a) annotation (Line(
+       points={{-80,10},{-58,10}},
+       color={95,95,95},
+       thickness=0.5));
+   connect(eMBS_Body.frame_ref, revFix.frame_b) annotation (Line(
+       points={{-20,10},{-38,10}},
+       color={95,95,95},
+       thickness=0.5));
+  annotation(experiment(
+   StopTime=10,
+   __Dymola_Algorithm="Dassl"));
   end EMBS_bodyExample;
 
   package Components
     model EMBS_Body
-          parameter Integer numNodes = 9 "the number of nodes given in the SID file";
-          parameter Integer numModes = 3 "the number of modes given in the SID file";
-          parameter Integer[:] nodeIdxs  "the node indeces that are instanciated as multibody flanges" annotation(Evaluate=true);
-          parameter Integer[:] animationNodeIdxs = EMBSlib.ExternalFunctions_C.getRestNodeIdcs(sid, n_mbsNodes,nodeIdxs, n_animationNodes) "the node indeces that are use for animation of nodes" annotation(Evaluate=true);
-          parameter Integer n_mbsNodes = size(nodeIdxs,1) annotation(Evaluate=true);
-          parameter Integer n_animationNodes = numNodes-n_mbsNodes;
-          parameter String SIDfileName = "E:/Projekte/VIBROSIM_2/EMBS_ModelicaLib/Resources/Data/cartopPragV32.SID_FEM";
+     parameter Integer numNodes=9;
+     parameter Integer numModes=3 "the number of modes given in the SID file";
+     parameter String SIDfileName=Modelica.Utilities.Files.loadResource("modelica://EMBSlib/Resources/Data/cartopPragV32.SID_FEM");
+     parameter Boolean animation=true annotation(Dialog(tab="Animation"));
+     parameter Real deformationScalingFactor=1 annotation(Dialog(tab="Animation"));
+     parameter Real sphereDiameter=0.1 annotation(Dialog(tab="Animation"));
+     parameter Integer[3] sphereColor={255,0,0} annotation(Dialog(tab="Animation"));
+     parameter Real coordinateSystemScalingFactor=0.2 annotation(Dialog(tab="Animation"));
+     constant Integer nr0=3 "dimension in space";
+     Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref annotation(Placement(
+      transformation(extent={{-116,-16},{-84,16}}),
+      iconTransformation(extent={{-116,-16},{-84,16}})));
+     Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[numNodes] annotation(Placement(
+      transformation(extent={{84,-16},{116,16}}),
+      iconTransformation(extent={{84,-16},{116,16}})));
+     Node nodes[numNodes](
+      each sid=sid,
+      each nq=nq,
+      nodeArrayIdx=1:numNodes,
+      each deformationScalingFactor=deformationScalingFactor,
+      each sphereColor=sphereColor,
+      each sphereDiameter=sphereDiameter) annotation(Placement(transformation(extent={{-8,-4},{12,16}})));
+     Real q[nq](start=zeros(nq)) "modal coordinates";
+     Real qd[nq](start=zeros(nq))=der(q);
+     Real qdd[nq]=der(qd);
+     Modelica.SIunits.Position r_0[3](start={0,0,0})=frame_ref.r_0
+           "position of frame of reference";
+     Modelica.SIunits.Velocity v[3]=der(r_0) "velocity of frame of reference";
+     Modelica.SIunits.Acceleration a[3]=Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,der(v))
+           "acceleration of frame of reference solved in body reference frame";
+     Modelica.SIunits.Acceleration g_0_aux[3]=world.gravityAcceleration(frame_ref.r_0 + Modelica.Mechanics.MultiBody.Frames.resolve1(frame_ref.R,cm[:,1]));
+     Modelica.SIunits.Acceleration g_0[3]=Modelica.Mechanics.MultiBody.Frames.resolve2(frame_ref.R,g_0_aux)
+           "Gravity acceleration resolved in world frame";
+     Modelica.SIunits.AngularVelocity omega[3]=Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
+     Modelica.SIunits.AngularAcceleration omega_d[3]=der(omega);
+     Modelica.SIunits.AngularVelocity omega_tilde[3,3]={{0, -omega[3],omega[2]},  {omega[3],0,-omega[1]}, {-omega[2],omega[1],0}};
+     Real M_t[3]=mI*(a-g_0) + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
+     Real k_omega_t[3]= mI*omega_tilde*v + 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
+     Real res2_1[3,1]=omega_tilde*omega_tilde*mdCM;
+     Real hd_t[3]=sum(identity(3)*nodes[i].f for i in 1:numNodes);
+     Real M_r[3]=mdCM_tilde*(a-g_0) + J* omega_d + transpose(Cr) * qdd;
+     Real k_omega_r[3]=Gr* omega + omega_tilde*J*omega + mdCM_tilde * omega_tilde * v;// + omega_tilde*transpose(Cr)*qd;
+     Real k_omega_r_1[3]=Gr* omega;
+     Real k_omega_r_2[3]=omega_tilde*J*omega;
+     Real hd_r[3]=sum(identity(3)*nodes[i].t for i in 1:numNodes);
+     Real hd_r2[3]=sum(identity(3)*nodes[i].t2 for i in 1:numNodes);
+     Real M_q[nq]=Ct*(a-g_0) + Cr* omega_d + Me* qdd;
+     Real k_omega_q[nq]=Ge*omega + Oe_*OMega + Ct * omega_tilde * v;
+     Real k_omega_q_1[nq]=Ge*omega;
+     Real k_omega_q_2[nq]=Oe_*OMega;
+     Real k_q[nq]=ksigma[:,1] + Ke*q +De*qd;
+     Real hd_e[nq]=sum(nodes[i].hde_i for i in 1:numNodes);
 
-          parameter Boolean animation = true annotation (Dialog(    tab="Animation"));
-          parameter Real deformationScalingFactor= 1 annotation(dialog(tab="Animation"));
-          parameter Real sphereDiameter = 0.1 annotation(dialog(tab="Animation"));
-          parameter Real coordinateSystemScalingFactor = 0.2 annotation(dialog(tab="Animation"));
+     Real hg_t[nr0] = mI*g_0;
+     Real hg_r[nr0] = mdCM_tilde*g_0;
+     Real hg_e[nq] = Ct*g_0;
+     Real trans[nr0] = f_rest-hd_t;
+     Real tors[nr0] = t_rest-hd_r;
 
-          constant Integer nr0 = 3 "dimension in space";
-
-          Real q[nq] "modal coordinates";
-          Real qd[nq] = der(q);
-          Real qdd[nq] = der(qd);
-
-          Modelica.SIunits.Position r_0[3](start={0,0,0}) = frame_ref.r_0  "position of frame of reference";
-          Modelica.SIunits.Velocity v[3] = der(r_0) "velocity of frame of reference";
-          Modelica.SIunits.Acceleration a[3] = der(v) "acceleration of frame of reference";
-          Modelica.SIunits.Acceleration g_0[3] = world.gravityAcceleration(frame_ref.r_0 + Modelica.Mechanics.MultiBody.Frames.resolve1(frame_ref.R,
-        cm[:,1])) "Gravity acceleration resolved in world frame" annotation(Evaluate=true);
-
-
-
-          Modelica.SIunits.AngularVelocity omega[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(frame_ref.R);
-          Modelica.SIunits.AngularAcceleration omega_d[3] = der(omega);
-          Modelica.SIunits.AngularVelocity omega_tilde[3,3] = {{0, -omega[3],omega[2]},  {omega[3],0,-omega[1]}, {-omega[2],omega[1],0}};
-
-          // kinematic equations --> translation
-          Real M_t[3] = mI*(a-g_0) + transpose(mdCM_tilde)* omega_d + transpose(Ct)* qdd;
-          Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*qd + res2_1[:,1];
-          Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
-          Real hd_t[3] = sum(identity(3)*nodes[i].f for i in 1:n_mbsNodes);
-
-          // kinematic equations --> rotation
-          Real M_r[3] = mdCM_tilde*(a-g_0) + J* omega_d + transpose(Cr) * qdd;
-          Real k_omega_r[3] = Gr* omega + omega_tilde*J*omega;
-          //Real t_comp[3] = M_r+k_omega_r;
-          Real hd_r[3] = sum(identity(3)*nodes[i].t for i in 1:n_mbsNodes);
-
-          //kinematic equations --> modal
-          Real M_q[nq] = Ct*(a-g_0) + Cr* omega_d + Me* qdd;
-          Real k_omega_q[nq] =  Ge*omega + Oe_*OMega;
-          Real k_q[nq] = ksigma[:,1] + Ke*q +De*qd;
-          Real hd_e[nq] = sum(nodes[i].hde_i for i in 1:n_mbsNodes);
-
-          Node nodes[n_mbsNodes](each sid=sid,
-           each nq=nq,
-           nodeIdx = nodeIdxs,
-           each deformationScalingFactor=deformationScalingFactor,
-           each coordinateSystemScalingFactor=coordinateSystemScalingFactor,
-           each sphereDiameter=sphereDiameter)                          annotation (Placement(transformation(extent={{-10,-4},
-                    {10,16}})));
-
-          AnimationNode
-               animationNodes[n_animationNodes](each sid=sid,
-           each nq=nq,
-           nodeIdx = animationNodeIdxs,
-           each deformationScalingFactor=deformationScalingFactor,
-           each coordinateSystemScalingFactor=coordinateSystemScalingFactor,
-           each sphereDiameter=sphereDiameter)    annotation (Placement(transformation(extent={{-10,-52},{10,-32}})));
-
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_ref
-         annotation (Placement(transformation(extent={{-116,-16},{-84,16}})));
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_node[n_mbsNodes] annotation (Placement(transformation(extent={{84,-16},
-                    {116,16}})));
-
-          Modelica.Blocks.Sources.RealExpression qExp[nq](y=q)
-            annotation (Placement(transformation(extent={{-58,40},{-38,60}})));
-
-          Modelica.SIunits.Torque[3] t_rest;
-          Modelica.SIunits.Force[3] f_rest;
-          Modelica.Mechanics.MultiBody.Forces.WorldForce force
-        annotation (Placement(transformation(extent={{-86,18},{-66,38}})));
-          Modelica.Blocks.Sources.RealExpression f_elast1[nr0](y=f_rest)
-        annotation (Placement(transformation(extent={{-124,16},{-104,36}})));
-          Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
-        annotation (Placement(transformation(extent={{-88,46},{-68,66}})));
-          Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest)
-        annotation (Placement(transformation(extent={{-124,46},{-104,66}})));
-
-          //SID File Data
-
+     Modelica.Blocks.Sources.RealExpression qExp[nq](y=q) annotation(Placement(transformation(extent={{-58,40},{-38,60}})));
+     Modelica.SIunits.Torque[3] t_rest;
+     Modelica.SIunits.Force[3] f_rest;
+     Modelica.Mechanics.MultiBody.Forces.WorldForce force(
+      resolveInFrame=Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.frame_b,
+      N_to_m=10) annotation(Placement(transformation(extent={{-86,18},{-66,38}})));
+     Modelica.Blocks.Sources.RealExpression f_elast1[nr0](y=f_rest) annotation(Placement(transformation(extent={{-124,16},{-104,36}})));
+     Modelica.Mechanics.MultiBody.Forces.WorldTorque torque(
+      Nm_to_m=10, resolveInFrame=Modelica.Mechanics.MultiBody.Types.ResolveInFrameB.world)
+                  annotation(Placement(transformation(extent={{-88,46},{-68,66}})));
+     Modelica.Blocks.Sources.RealExpression t_elast2[nr0](y=t_rest) annotation(Placement(transformation(extent={{-124,46},{-104,66}})));
     protected
-          parameter EMBSlib.SID_File sid = EMBSlib.SID_File(SIDfileName) annotation (Evaluate=true);
-          //mass
-          parameter Modelica.SIunits.Mass mass = EMBSlib.ExternalFunctions_C.getMass(sid) annotation(Evaluate=true);
-          parameter Modelica.SIunits.Mass mI[nr0,nr0] = identity(nr0)*mass;
-
-          //mdCM
-          parameter Real mdCM_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0( sid, "mdCM", nr0, 1) annotation (Evaluate=true);
-          parameter Real mdCM_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1(sid,   "mdCM", nr0, nq, 1) annotation (Evaluate=true);
-          Real mdCM [nr0,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,mdCM_M0,mdCM_M1,q);
-          Real cm[nr0,1] = mdCM/mass "centre of mass";
-          Real mdCM_tilde[nr0,nr0] = {{0, -mdCM[3,1],mdCM[2,1]},  {mdCM[3,1],0,-mdCM[1,1]}, {-mdCM[2,1],mdCM[1,1],0}};
-
-          //J, is always in a special structure in [6,1]
-          constant Integer nJ = 6 "J is always a vektor of size 6";
-          parameter Real J_M0[nJ,1]= EMBSlib.ExternalFunctions_C.getM0( sid, "J", nJ, 1) annotation (Evaluate=true);
-          parameter Real J_M1[nJ,nq,1]= EMBSlib.ExternalFunctions_C.getM1( sid, "J", nJ, nq, 1) annotation (Evaluate=true);
-          Real J_ [nJ,1] = EMBSlib.MatrixFunctions.getTaylorFunction(nJ,nq,1,J_M0,J_M1,q);
-          Real J [nr0,nr0] = {{J_[1,1],J_[4,1],J_[5,1]},{J_[4,1],J_[2,1],J_[6,1]},{J_[5,1],J_[6,1],J_[3,1]}};
-
-          //Ct
-          parameter Real Ct_M0[nq,nr0] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ct", nq, nr0) annotation (Evaluate=true);
-          parameter Real Ct_M1[nq,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1( sid, "Ct", nq, nq, nr0) annotation (Evaluate=true);
-          Real Ct [nq,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Ct_M0,Ct_M1,q);
-
-          //Cr
-          parameter Real Cr_M0[nq,nr0] = EMBSlib.ExternalFunctions_C.getM0( sid, "Cr", nq, nr0) annotation (Evaluate=true);
-          parameter Real Cr_M1[nq,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1( sid, "Cr", nq,  nq, nr0) annotation (Evaluate=true);
-          Real Cr [nq,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Cr_M0,Cr_M1,q);
-
-          //Gr
-          parameter Real Gr_ [nr0,nr0*nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Gr", nr0, nr0*nq) annotation (Evaluate=true);
-          Real Gr [nr0,nr0] = EMBSlib.MatrixFunctions.getGrMatrix(nr0,nq,nr0*nq,Gr_,qd);//! this is the sum of the product of the GR matrices with the respective qd_i
-
-          //Ge
-          parameter Real Ge_ [nq,nr0*nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ge", nq, nr0*nq) annotation (Evaluate=true);
-          Real Ge [nq,nr0] = EMBSlib.MatrixFunctions.getGeMatrix(nq,nq,nr0*nq,Ge_,qd);//! this is the sum of the product of the Ge matrices with the respective qd_i
-
-          //Me
-          parameter Real Me[nq,nq] = identity(nq) annotation (Evaluate=true);
-
-          //Oe
-          constant Integer nOe = 6 "its always 6";
-          parameter Real Oe_M0[nq,nOe] = EMBSlib.ExternalFunctions_C.getM0( sid, "Oe", nq, nOe) annotation (Evaluate=true);
-          parameter Real Oe_M1[nq,nq,nOe] = EMBSlib.ExternalFunctions_C.getM1( sid, "Oe", nq,  nq, nOe) annotation (Evaluate=true);
-          Real Oe_[nq,nOe] = EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,6,Oe_M0,Oe_M1,q);//wallrapp says on page 12 table 1 there is acompact form, not used here?!?!?!?
-
-          //OMega
-          Real OMega[nOe] = {omega[1]^2, omega[2]^2, omega[3]^2, omega[1]*omega[2], omega[2]*omega[3], omega[1]*omega[3]};
-
-          //ksigma
-          parameter Real ksigma[nq,1] = zeros(nq,1) annotation (Evaluate=true); //!! For simplicity....change this
-
-          //Ke
-          parameter Real Ke[nq,nq] = EMBSlib.ExternalFunctions_C.getM0( sid, "Ke", nq, nq) annotation (Evaluate=true);
-
-           //De
-          parameter Real De[nq,nq] =  EMBSlib.ExternalFunctions_C.getM0( sid, "De", nq, nq) annotation (Evaluate=true);
-
-          parameter Integer nq = numModes;
-
-          outer Modelica.Mechanics.MultiBody.World world
-        annotation (Placement(transformation(extent={{-100,80},{-80,100}})));
-          //Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame[n_mbsNodes](length=        coordinateSystemScalingFactor)    annotation (Placement(transformation(extent={{56,22},{76,42}})));
-
+      parameter EMBSlib.SID_File sid=EMBSlib.SID_File(SIDfileName) annotation(Evaluate=true);
+      parameter Modelica.SIunits.Mass mass=EMBSlib.ExternalFunctions_C.getMass(sid);
+      parameter Modelica.SIunits.Mass mI[nr0,nr0]=identity(nr0)*mass;
+      parameter Real mdCM_M0[nr0,1]=EMBSlib.ExternalFunctions_C.getM0( sid, "mdCM", nr0, 1) annotation(Evaluate=true);
+      parameter Real mdCM_M1[nr0,nq,1]=EMBSlib.ExternalFunctions_C.getM1(sid,   "mdCM", nr0, nq, 1) annotation(Evaluate=true);
+      Real mdCM[nr0,1]=EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,mdCM_M0,mdCM_M1,q);
+      Real cm[nr0,1]=mdCM/mass "centre of mass";
+      Real mdCM_tilde[nr0,nr0]={{0, -mdCM[3,1],mdCM[2,1]},  {mdCM[3,1],0,-mdCM[1,1]}, {-mdCM[2,1],mdCM[1,1],0}};
+      constant Integer nJ=6 "J is always a vektor of size 6";
+      parameter Real J_M0[nJ,1]=EMBSlib.ExternalFunctions_C.getM0( sid, "J", nJ, 1) annotation(Evaluate=true);
+      parameter Real J_M1[nJ,nq,1]=EMBSlib.ExternalFunctions_C.getM1( sid, "J", nJ, nq, 1) annotation(Evaluate=true);
+      Real J_[nJ,1]=EMBSlib.MatrixFunctions.getTaylorFunction(nJ,nq,1,J_M0,J_M1,q);
+      Real J[nr0,nr0]={{J_[1,1],J_[4,1],J_[5,1]},{J_[4,1],J_[2,1],J_[6,1]},{J_[5,1],J_[6,1],J_[3,1]}};
+      parameter Real Ct_M0[nq,nr0]=EMBSlib.ExternalFunctions_C.getM0( sid, "Ct", nq, nr0) annotation(Evaluate=true);
+      parameter Real Ct_M1[nq,nq,nr0]=EMBSlib.ExternalFunctions_C.getM1( sid, "Ct", nq, nq, nr0) annotation(Evaluate=true);
+      Real Ct[nq,nr0]=EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Ct_M0,Ct_M1,q);
+      parameter Real Cr_M0[nq,nr0]=EMBSlib.ExternalFunctions_C.getM0( sid, "Cr", nq, nr0) annotation(Evaluate=true);
+      parameter Real Cr_M1[nq,nq,nr0]=EMBSlib.ExternalFunctions_C.getM1( sid, "Cr", nq,  nq, nr0) annotation(Evaluate=true);
+      Real Cr[nq,nr0]=EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,nr0,Cr_M0,Cr_M1,q);
+      parameter Real Gr_[nr0,nr0*nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "Gr", nr0, nr0*nq) annotation(Evaluate=true);
+      Real Gr[nr0,nr0]=EMBSlib.MatrixFunctions.getGrMatrix(nr0,nq,nr0*nq,Gr_,qd);
+      parameter Real Ge_[nq,nr0*nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "Ge", nq, nr0*nq) annotation(Evaluate=true);
+      Real Ge[nq,nr0]=EMBSlib.MatrixFunctions.getGeMatrix(nq,nq,nr0*nq,Ge_,qd);
+      parameter Real Me[nq,nq]=identity(nq) annotation(Evaluate=true);
+      constant Integer nOe=6 "its always 6";
+      parameter Real Oe_M0[nq,nOe]=EMBSlib.ExternalFunctions_C.getM0( sid, "Oe", nq, nOe) annotation(Evaluate=true);
+      parameter Real Oe_M1[nq,nq,nOe]=EMBSlib.ExternalFunctions_C.getM1( sid, "Oe", nq,  nq, nOe) annotation(Evaluate=true);
+      Real Oe_[nq,nOe]=EMBSlib.MatrixFunctions.getTaylorFunction(nq,nq,6,Oe_M0,Oe_M1,q);
+      Real OMega[nOe]={omega[1]^2, omega[2]^2, omega[3]^2, omega[1]*omega[2], omega[2]*omega[3], omega[1]*omega[3]};
+      parameter Real ksigma[nq,1]=zeros(nq,1) annotation(Evaluate=true);
+      parameter Real Ke[nq,nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "Ke", nq, nq) annotation(Evaluate=true);
+      parameter Real De[nq,nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "De", nq, nq) annotation(Evaluate=true);
+      parameter Integer nq=numModes;
+      outer Modelica.Mechanics.MultiBody.World world annotation(Placement(transformation(extent={{-100,80},{-80,100}})));
+    public
+      Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame[numNodes](each
+          length=coordinateSystemScalingFactor)                                                 annotation(Placement(transformation(extent={{60,60},{80,80}})));
+    public
+      Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame1[
+                                                                     numNodes](each length=0.1) annotation(Placement(transformation(extent={{-28,-46},
+                   {-8,-26}})));
+    initial algorithm
+      for i in 1:nq loop
+        q[i] :=0.0;
+        qd[i] :=0.0;
+      end for;
     equation
+
          //kinematic equations
-         M_t +k_omega_t  =  -f_rest;
-         M_r+k_omega_r=  -t_rest;
-         M_q + k_omega_q + k_q = hd_e;
+         M_t + k_omega_t = -f_rest;//hd_t;//hg_t + hd_t    -f_rest +
+         M_r + k_omega_r = -t_rest;// hd_r + hd_r2;  //hg_r + hd_r    -t_rest +
+         M_q + k_omega_q + k_q = hd_e;// hg_e +
 
-         for i in 1:n_mbsNodes loop
-          connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,50},{-18,5.8},{-10.2,5.8}},  color={0,0,127}));
-          connect(nodes[i].frame_a, frame_ref) annotation (Line(
-              points={{-10,0.4},{-50,0.4},{-50,0},{-100,0}},
-              color={95,95,95},
-              thickness=0.5));
+         for i in 1:numNodes loop
+          connect(qExp.y, nodes[i].q)    annotation (Line(points={{-37,50},{-18,
+                50},{-18,5.8},{-8.2,5.8}},                                                                   color={0,0,127}));
           connect(nodes[i].frame_b, frame_node[i]) annotation (Line(
-              points={{10,0.2},{25,0.2},{25,0},{100,0}},
+              points={{12,0.2},{25,0.2},{25,0},{100,0}},
               color={95,95,95},
               thickness=0.5));
           connect(nodes[i].frame_a, frame_ref) annotation (Line(
-          points={{-10,0.4},{-32,0.4},{-32,0},{-100,0}},
+          points={{-8,0.4},{-55,0.4},{-55,0},{-100,0}},
           color={95,95,95},
           thickness=0.5));
          end for;
-
-         for a in 1: n_animationNodes loop
-
-      connect(animationNodes[a].q, qExp.y) annotation (Line(points={{-10.2,-42.2},{-10.2,
-              -42},{-28,-42},{-28,50},{-37,50}}, color={0,0,127}));
-          connect(animationNodes[a].frame_a, frame_ref) annotation (Line(
-          points={{-10,-47.6},{-80,-47.6},{-80,0},{-100,0}},
-          color={95,95,95},
-          thickness=0.5));
-         end for;
-
 
       connect(force.frame_b, frame_ref) annotation (Line(
           points={{-66,28},{-64,28},{-64,0},{-100,0}},
           color={95,95,95},
           thickness=0.5));
-      connect(f_elast1.y, force.force) annotation (Line(points={{-103,26},{-96,
-              26},{-96,28},{-88,28}}, color={0,0,127}));
-      connect(torque.frame_b, force.frame_b) annotation (Line(
-          points={{-68,56},{-68,28},{-66,28}},
+      connect(f_elast1.y,force.force) annotation(Line(
+       points={{-103,26},{-98,26},{-93,26},{-93,28},{-88,28}},
+       color={0,0,127}));
+      connect(t_elast2.y,torque.torque) annotation(Line(
+       points={{-103,56},{-98,56},{-95,56},{-90,56}},
+       color={0,0,127}));
+      connect(fixedFrame.frame_a, nodes.frame_b) annotation (Line(
+          points={{60,70},{38,70},{38,0.2},{12,0.2}},
           color={95,95,95},
-          thickness=0.5));
-      connect(t_elast2.y, torque.torque)
-        annotation (Line(points={{-103,56},{-90,56}}, color={0,0,127}));
-            annotation (Line(points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}}, color={0,0,127}));
+          thickness=0.5,
+          smooth=Smooth.None));
+         connect(fixedFrame1.frame_a, nodes.frame_a) annotation (Line(
+             points={{-28,-36},{-38,-36},{-38,-14},{-8,-14},{-8,0.4}},
+             color={95,95,95},
+             thickness=0.5,
+             smooth=Smooth.None));
+         connect(torque.frame_b, force.frame_b) annotation (Line(
+             points={{-68,56},{-68,28},{-66,28}},
+             color={95,95,95},
+             thickness=0.5,
+             smooth=Smooth.None));
+     annotation (
+      Line(
+       points={{-37,50},{-26,50},{-26,49.8},{-0.2,49.8}},
+       color={0,0,127}),
+      nodes(
+       shape(Error,
+         val="2005"),
+          Error,
+         val="2013"),
+        Error,
+         val="000000");
     end EMBS_Body;
 
     model Node
-          parameter EMBSlib.SID_File sid;
-          parameter Integer nq = 3;
-          parameter Integer nodeIdx = 1;
-          parameter Integer nodeArrayIdx = EMBSlib.ExternalFunctions_C.getNodeArrayIdx(sid,nodeIdx);
-          parameter Integer nr0 = 3;
+     parameter EMBSlib.SID_File sid;
+     parameter Integer nq=3;
+     parameter Integer nodeArrayIdx=1;
+     parameter Integer nr0=3;
+     parameter Real deformationScalingFactor=1;
+     parameter Real coordinateSystemScalingFactor=1;
+     parameter Integer[3] sphereColor={255,0,0};
+     parameter Boolean animation=true annotation(Dialog(tab="Animation"));
+     parameter Real origin_M0[nr0,1]=EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation(Evaluate=true);
+     parameter Real origin_M1[nr0,nq,1]=EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation(Evaluate=true);
+     Real origin_[nr0,1]=origin_M0;
+     Modelica.SIunits.Position origin[nr0]=origin_[:,1];
 
-          parameter Real deformationScalingFactor= 1;
-          parameter Real coordinateSystemScalingFactor = 0.02;
-          parameter Boolean animation = true annotation (Dialog(
-              tab="Animation"));
+     parameter Real psi_M0[nr0,nq]=EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation(Evaluate=true);
+     parameter Real psi_M1[nr0,nq,nq]=EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation(Evaluate=true);
+     Modelica.SIunits.Angle psi[nr0,nq]=psi_M0;
+     Modelica.SIunits.Angle theta[nr0]=psi*q "elastic rotation";
 
+     Real theta_tilde[nr0,nr0] = {{0, -theta[3],theta[2]},  {theta[3],0,-theta[1]}, {-theta[2],theta[1],0}};
+     Real D[nr0,nr0] = (identity(3)- theta_tilde) * AP;
 
-          //origin (if bodies are attached to the nodes, origin has to be derived due to index reduction, keeping it as a parameter works)
-          parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
-          parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
-          Real origin_[nr0,1] = origin_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
-          Real origin[nr0] = origin_[:,1];
+     Modelica.SIunits.AngularVelocity der_theta[nr0]=der(theta)
+           "elastic rotation velocity";
+     parameter Modelica.SIunits.Position phi_M0[nr0,nq]=EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation(Evaluate=true);
+     parameter Modelica.SIunits.Position phi_M1[nr0,nq,nq]=EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation(Evaluate=true);
+     Modelica.SIunits.Position phi[nr0,nq]=phi_M0;
+     Modelica.SIunits.Position u[nr0]=phi*q "elastic displacement";
+     Modelica.SIunits.Position u_abs=Modelica.Math.Vectors.length(u);
+     parameter Real AP_M0[nr0,nr0]=EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation(Evaluate=true);
+     parameter Real AP_M1[nr0,nq,nr0]=EMBSlib.ExternalFunctions_C.getM1Node(sid, "AP",nodeArrayIdx, nr0, nq, nr0) annotation(Evaluate=true);
+    // Real AP[nr0,nr0]=EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
+     Real AP[nr0,nr0]=EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,AP_M1,q);
 
-          //psi
-          parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
-          parameter Real psi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
-          Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
-          Modelica.SIunits.Angle theta [nr0] = psi*q "elastic rotation";
+     Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a annotation(Placement(
+      transformation(extent={{-116,-72},{-84,-40}}),
+      iconTransformation(extent={{-116,-72},{-84,-40}})));
+     Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b annotation(Placement(
+      transformation(extent={{84,-74},{116,-42}}),
+      iconTransformation(extent={{84,-74},{116,-42}})));
+     Modelica.Blocks.Interfaces.RealInput q[nq](start=zeros(nq))
+           "modal coordinates"                                                       annotation(Placement(
+      transformation(extent={{-122,-22},{-82,18}}),
+      iconTransformation(extent={{-122,-22},{-82,18}})));
+     Real q_d[nq]=der(q);
+     Modelica.SIunits.Force f[nr0]=frame_b.f "external force applied";
+     Modelica.SIunits.Torque t[nr0]=frame_b.t "external torque applied";
+     Modelica.SIunits.Torque t2[nr0]=cross(Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u),frame_b.f)
+           "torque cause of force";
+     //Modelica.SIunits.Force hde_i[nq]=transpose(phi)*f+transpose(psi)*t;
+      Real hde_i[nq]=transpose(phi)*f+transpose(psi)*t;//
+      Real hdef_i[nq]=transpose(phi)*f;//
+      Real hdet_i[nq]=transpose(psi)*t;//
+     parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
+           "Diameter of sphere"                                                                        annotation(Dialog(
+      group="if animation = true",
+      tab="Animation",
+      enable=animation));
+     Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
+      shapeType="sphere",
+      r=frame_b.r_0-sphereDiameter*0.5*{1,0,0},
+      lengthDirection={1,0,0},
+      length=sphereDiameter,
+      width=sphereDiameter,
+      height=sphereDiameter,
+      color=sphereColor) annotation(Placement(transformation(extent={{80,60},{100,80}})));
+     //Modelica.Mechanics.MultiBody.Frames.Orientation R_theta=Modelica.Mechanics.MultiBody.Frames.axesRotations({1,2,3},theta,zeros(3));
+     //Modelica.Mechanics.MultiBody.Frames.Orientation R_theta=Modelica.Mechanics.MultiBody.Frames.axesRotations({1,2,3},theta,der_theta);
+     Modelica.Mechanics.MultiBody.Frames.Orientation R_theta;
 
-          //phi(if bodies are attached to the nodes, phi has to be derived due to index reduction, keeping it as a parameter works)
-          parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
-          parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
-          parameter Real phi [nr0,nq] = phi_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
-          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement" annotation(each stateSelect=StateSelect.never);
-
-
-          //AP
-          parameter Real AP_M0[nr0,nr0] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation (Evaluate=true);
-          parameter Real AP_M1[nr0,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "AP",nodeArrayIdx, nr0, nq, nr0) annotation (Evaluate=true);
-          Real AP [nr0,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
-
-
-          Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"
-            annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
-          Real q_d[nq] = der(q);
-
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
-            annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
-
-          Modelica.SIunits.Force f[nr0] = frame_b.f "external force applied";
-
-          Modelica.SIunits.Torque t[nr0] = frame_b.t "external torque applied";
-
-
-          Modelica.SIunits.Force hde_i[nq] = transpose(phi)*f+transpose(psi)*t;
-          Modelica.SIunits.Torque hdt_i[nr0] = (origin+u).*f+t;
-
-
-
-          parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
-            "Diameter of sphere" annotation (Dialog(
-              tab="Animation",
-              group="if animation = true",
-              enable=animation));
-                                   Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(r = frame_a.r_0 + origin +deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
-         shapeType="sphere",
-         length=sphereDiameter,
-         width=sphereDiameter,
-         height=sphereDiameter,
-         lengthDirection={1,0,0},
-        color={255,85,85})
-         annotation (Placement(transformation(extent={{80,60},{100,80}})));
-
-
-          Modelica.Mechanics.MultiBody.Interfaces.Frame_b frame_b
-            annotation (Placement(transformation(extent={{84,-74},{116,-42}})));
     protected
-          outer Modelica.Mechanics.MultiBody.World world
-            annotation (Placement(transformation(extent={{-98,60},{-78,80}})));
-          Modelica.Mechanics.MultiBody.Frames.Orientation R_theta = Modelica.Mechanics.MultiBody.Frames.axesRotations({1,2,3},theta,zeros(3));
+      outer Modelica.Mechanics.MultiBody.World world;
     equation
-          Connections.branch(frame_a.R, frame_b.R);
-          assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
-            "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
+      R_theta.T = D;
+      R_theta.w = psi*q_d;//zeros(3);
+      Connections.branch(frame_a.R, frame_b.R);
+      assert(cardinality(frame_a) > 0 or cardinality(frame_b) > 0,
+        "Neither connector frame_a nor frame_b of FixedTranslation object is connected");
 
-          frame_b.r_0 = frame_a.r_0+origin+u;
-          frame_b.R.T = frame_a.R.T * R_theta.T;
-          frame_b.R.w = frame_a.R.w;
+      frame_b.r_0 = frame_a.r_0 + Modelica.Mechanics.MultiBody.Frames.resolve1(frame_a.R, origin+u);
 
-          /* Force and torque balance */
-          zeros(3) = frame_a.f + frame_b.f;
-          zeros(3) = frame_a.t + frame_b.t;
-          //connect(frame_a, frame_b) annotation (Line(      points={{-100,-56},{-2,-56},{-2,-58},{100,-58}},      color={95,95,95},      thickness=0.5));
-          annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
-            Ellipse(
-              extent={{-54,50},{54,-58}},
-              lineColor={0,0,0},
-              fillColor={170,213,255},
-              fillPattern=FillPattern.Solid),
-            Line(
-              points={{36,36},{82,88}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{-78,86},{-34,38}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{-38,-44},{-86,-94}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{32,-48},{94,-96}},
-              color={0,0,0},
-              thickness=0.5)}),                                          Diagram(
-                coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
-                    100,100}})));
+      if Connections.rooted(frame_a.R) then
+        frame_b.R = Modelica.Mechanics.MultiBody.Frames.absoluteRotation(frame_a.R, R_theta);
+        zeros(3) = frame_a.f + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_b.f);
+        zeros(3) = frame_a.t + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_b.t) + cross(Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u),frame_b.f);
+        //zeros(3) = frame_a.t + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_b.t) - cross(origin+u,frame_a.f);
+      else
+        frame_a.R = Modelica.Mechanics.MultiBody.Frames.absoluteRotation(frame_b.R, R_theta);
+        zeros(3) = frame_b.f + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_a.f);
+        zeros(3) = frame_b.t + Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, frame_a.t) + cross(
+          Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u), frame_b.f);
+      end if;
+     annotation (
+      Icon(
+       coordinateSystem(preserveAspectRatio=false),
+       graphics={
+        Ellipse(
+         fillColor={170,213,255},
+         fillPattern=FillPattern.Solid,
+         extent={{-54,50},{54,-58}}),
+        Line(
+         points={{36,36},{82,88}},
+         thickness=0.5),
+        Line(
+         points={{-78,86},{-34,38}},
+         thickness=0.5),
+        Line(
+         points={{-38,-44},{-86,-94}},
+         thickness=0.5),
+        Line(
+         points={{32,-48},{94,-96}},
+         thickness=0.5)}),
+      Diagram(coordinateSystem(preserveAspectRatio=false)),
+      experiment(
+       StopTime=1,
+       StartTime=0,
+       Interval=0.001));
     end Node;
 
-    model AnimationNode
-          parameter EMBSlib.SID_File sid;
-          parameter Integer nq = 3;
-          parameter Integer nodeIdx = 1;
-          parameter Integer nodeArrayIdx = EMBSlib.ExternalFunctions_C.getNodeArrayIdx(sid,nodeIdx);
-          parameter Integer nr0 = 3;
-
-          parameter Real deformationScalingFactor= 1;
-          parameter Real coordinateSystemScalingFactor = 0.02;
-          parameter Boolean animation = true annotation (Dialog(
-              tab="Animation"));
-
-          //origin (if bodies are attached to the nodes, origin has to be derived due to index reduction, keeping it as a parameter works)
-          parameter Real origin_M0[nr0,1] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "origin",nodeArrayIdx, nr0, 1) annotation (Evaluate=true);
-          parameter Real origin_M1[nr0,nq,1] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "origin",nodeArrayIdx, nr0, nq, 1) annotation (Evaluate=true);
-          Real origin_[nr0,1] = origin_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,1,origin_M0,origin_M1,q);
-          Real origin[nr0] = origin_[:,1];
-
-          //psi
-          parameter Real psi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "psi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
-          parameter Real psi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "psi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
-          Real psi [nr0,nq] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,psi_M0,psi_M1,q);
-          Modelica.SIunits.Angle theta [nr0] = psi*q "elastic rotation";
-
-          //phi(if bodies are attached to the nodes, phi has to be derived due to index reduction, keeping it as a parameter works)
-          parameter Real phi_M0[nr0,nq] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "phi",nodeArrayIdx, nr0, nq) annotation (Evaluate=true);
-          parameter Real phi_M1[nr0,nq,nq] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "phi",nodeArrayIdx, nr0, nq, nq) annotation (Evaluate=true);
-          parameter Real phi [nr0,nq] = phi_M0;//EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nq,phi_M0,phi_M1,q);
-          Modelica.SIunits.Position u[nr0] = phi*q "elastic displacement" annotation(each stateSelect=StateSelect.never);
-
-          //AP
-          parameter Real AP_M0[nr0,nr0] = EMBSlib.ExternalFunctions_C.getM0Node( sid, "AP", nodeArrayIdx, nr0, nr0) annotation (Evaluate=true);
-          parameter Real AP_M1[nr0,nq,nr0] = EMBSlib.ExternalFunctions_C.getM1Node(sid, "AP",nodeArrayIdx, nr0, nq, nr0) annotation (Evaluate=true);
-          Real AP [nr0,nr0] = EMBSlib.MatrixFunctions.getTaylorFunction(nr0,nq,nr0,AP_M0,zeros(nr0,nq,nr0),q);
-
-          Modelica.Blocks.Interfaces.RealInput q[nq] "modal coordinates"        annotation (Placement(transformation(extent={{-122,-22},{-82,18}})));
-          parameter Modelica.SIunits.Diameter sphereDiameter=0.01 "Diameter of sphere" annotation (Dialog(
-              tab="Animation",
-              group="if animation = true",
-              enable=animation));
-          Modelica.Mechanics.MultiBody.Visualizers.Advanced.Shape shape(
-        R=R_theta,                                                      r = frame_a.r_0 + origin +deformationScalingFactor*u- {1,0,0}*sphereDiameter/2,
-        shapeType="box",                                                                                                                                                            length=sphereDiameter,     width=sphereDiameter,     height=sphereDiameter,     lengthDirection={1,0,0},
-        color={170,85,255})                                                                                                                                                                                                         annotation (Placement(transformation(extent={{80,60},{100,80}})));
-
-      Modelica.Mechanics.MultiBody.Interfaces.Frame_a frame_a
-        annotation (Placement(transformation(extent={{-116,-72},{-84,-40}})));
-    protected
-          Modelica.Mechanics.MultiBody.Frames.Orientation R_theta = Modelica.Mechanics.MultiBody.Frames.axesRotations({1,2,3},theta,zeros(3));
-    equation
-          frame_a.f=zeros(3);
-          frame_a.t=zeros(3);
-          annotation (Icon(coordinateSystem(preserveAspectRatio=false), graphics={
-            Ellipse(
-              extent={{-54,50},{54,-58}},
-              lineColor={0,0,0},
-              fillColor={170,213,255},
-              fillPattern=FillPattern.Solid),
-            Line(
-              points={{36,36},{82,88}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{-78,86},{-34,38}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{-38,-44},{-86,-94}},
-              color={0,0,0},
-              thickness=0.5),
-            Line(
-              points={{32,-48},{94,-96}},
-              color={0,0,0},
-              thickness=0.5),
-            Text(
-              extent={{-22,26},{22,-34}},
-              lineColor={28,108,200},
-              textString="A")}),                                         Diagram(
-                coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{
-                    100,100}})));
-    end AnimationNode;
   end Components;
 
   class SID_File
@@ -632,231 +528,5 @@ package EMBSlib
             end for;
           end getGeMatrix;
   end MatrixFunctions;
-
-  model SimplePlate2 "Plate with force excitation"
-    import FlexibleBodies;
-    extends Modelica.Icons.Example;
-    inner Modelica.Mechanics.MultiBody.World world(
-      enableAnimation=true,
-      n={0,0,-1},
-      animateGravity=true,
-      g=0,
-      animateWorld=true)
-      annotation (Placement(transformation(extent={{-112,10},{-92,30}},
-            rotation=0)));
-
-    FlexibleBodies.ModalBody ModalBody(
-      wireFrameElasticScale=1,
-      WavefrontFile=FlexibleBodies.DataDirectory + "cartopPragV3.obj",
-      solidColor={155,155,155},
-      wireFrameColor={155,0,0},
-      nodeAxesAnimation=true,
-      SID_fileName=FlexibleBodies.DataDirectory + "cartopPragV32.SID_FEM",
-      solidElasticScale=1,
-      Nodes={1,2,12,26,78,84,107,143,149},
-      solidAnimation=false,
-      wireFrameAnimation=true,
-      fontSize=8,
-      showNodeNumbers=true,
-      get_c=true,
-      get_u=true,
-      get_phi=true,
-      native=true) annotation (Placement(transformation(extent={{-20,-10},{40,50}},
-            rotation=0)));
-
-
-      //reverse engineering
-      parameter Integer nq = 3;
-      Real q[nq] = ModalBody.q;
-      Real q_d[nq] = der(q);
-      Real q_dd[nq] = der(q_d);
-      Real m = ModalBody.nBody.modal.mass;
-      Real mI[3,3] = identity(3)*m;
-
-      //mdCM
-      Real mdCM_M0[3,1] = ModalBody.nBody.modal.mdCM.M0;
-      Real mdCM_M1[3,nq,1] = ModalBody.nBody.modal.mdCM.M1;
-      Real mdCM_ [3,1] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,1,mdCM_M0,mdCM_M1,q);
-      //Real mdCM [3,3] = {{mdCM_[1,1],0,0},{0,mdCM_[2,1],0},{0,0,mdCM_[3,1]}};
-      Real cm[3,1] = mdCM_/m;
-      Real mdCM_tilde[3,3] = {{0, -mdCM_[3,1],mdCM_[2,1]},  {mdCM_[3,1],0,-mdCM_[1,1]}, {-mdCM_[2,1],mdCM_[1,1],0}};
-
-      //J
-      Real J_M0[6,1] = ModalBody.nBody.modal.J.M0;
-      Real J_M1[6,nq,1] = ModalBody.nBody.modal.J.M1;
-      Real J_ [6,1] = EMBSlib.MatrixFunctions.getTaylorFunction(6,nq,1,J_M0,J_M1,q);
-      Real J [3,3] = {{J_[1,1],J_[4,1],J_[5,1]},{J_[4,1],J_[2,1],J_[6,1]},{J_[5,1],J_[6,1],J_[3,1]}};
-      //Real J[6,1] =  J_M1*q;
-
-      //Ct
-      Real Ct_M0[3,3] = ModalBody.nBody.modal.Ct.M0;
-      Real Ct_M1[3,nq,3] = ModalBody.nBody.modal.Ct.M1;
-      Real Ct [3,3] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,3,Ct_M0,Ct_M1,q);
-
-      //Cr
-      Real Cr_M0[3,3] = ModalBody.nBody.modal.Cr.M0;
-      Real Cr_M1[3,nq,3] = ModalBody.nBody.modal.Cr.M1;
-      Real Cr [3,3] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,3,Cr_M0,Cr_M1,q);
-
-      //Gr
-      Real Gr_ [3,9] = ModalBody.nBody.modal.Gr;
-      Real Gr [3,3] = EMBSlib.MatrixFunctions.getGrMatrix(3,nq,9,Gr_,q_d);//! q_d
-
-      //Ge
-      Real Ge_ [3,9] = ModalBody.nBody.modal.Ge;
-      Real Ge [3,3] = EMBSlib.MatrixFunctions.getGrMatrix(3,nq,9,Ge_,q_d);//! q_d
-
-      //Me
-      Real Me[3,3] = identity(3);
-
-      //Oe
-      Real Oe_M0[3,6] = ModalBody.nBody.modal.Oe.M0;
-      Real Oe_M1[3,nq,6] = ModalBody.nBody.modal.Oe.M1;
-      Real Oe [nq,6] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,6,Oe_M0,Oe_M1,q);
-
-      //OMega
-      Real OMega[6] = {phi_d[1]^2, phi_d[2]^2, phi_d[3]^2, phi_d[1]*phi_d[2], phi_d[2]*phi_d[3], phi_d[1]*phi_d[3]};
-
-      //ksigma
-      Real ksigma[3,1] = zeros(3,1);
-
-      //Ke
-      Real Ke[nq,nq] = ModalBody.nBody.modal.Ke;
-
-      //De
-      Real De[nq,nq] =  ModalBody.nBody.modal.De;
-
-      // references
-      Real f[3] = ModalBody.frame_ref.f;
-      Real t[3] = ModalBody.frame_ref.t;
-      Real t_diff[3] = -ModalBody.frame_ref.t + h_r + t_comp; // this should be zero
-
-      //external loads on all nodes (without frame of reference)
-      Real h_t[3] = sum(ModalBody.nodes[i].f for i in 1:ModalBody.n_Nodes);
-      Real h_r[3] = sum(cross(ModalBody.nodes[i].f,ModalBody.nodes[i].r_0) for i in 1:ModalBody.n_Nodes);
-
-      //kinematic equations
-      Real r_0[3] = ModalBody.frame_ref.r_0;
-      Real r_0_d[3] = der(r_0);
-      Real r_0_dd[3] = der(r_0_d);
-      Real phi_d[3] = Modelica.Mechanics.MultiBody.Frames.angularVelocity2(ModalBody.frame_ref.R);
-      Real phi_dd[3] = der(phi_d);
-      Real omega_tilde[3,3] = {{0, -phi_d[3],phi_d[2]},  {phi_d[3],0,-phi_d[1]}, {-phi_d[2],phi_d[1],0}};
-
-      // kinematic equations --> translation
-      Real M_t[3] = mI*r_0_dd + transpose(mdCM_tilde)*phi_dd + transpose(Ct)*q_dd;
-      Real k_omega_t[3] = 2*omega_tilde*transpose(Ct)*q_d + res2_1[:,1];
-      Real res2_1[3,1] = omega_tilde*omega_tilde*cm; // need the intermediate value to fix the dimensions
-      Real f_comp[3] = M_t+k_omega_t;
-      Real hd_t[3] = sum(identity(3)*ModalBody.nodes[i].f for i in 1:ModalBody.n_Nodes);
-      Real residual_t[3] = f_comp - hd_t - ModalBody.frame_ref.f;  // this should be zero
-
-      // kinematic equations --> rotation
-      Real M_r[3] = mdCM_tilde*r_0_dd + J*phi_dd + transpose(Cr) *q_dd;
-      Real k_omega_r[3] = Gr*phi_dd + omega_tilde*J*phi_d;
-      Real t_comp[3] = M_r+k_omega_r;
-      Real hd_r[3] = sum(ModalBody.nodes[i].r_0.*ModalBody.nodes[i].f+ModalBody.nodes[i].t for i in 1:ModalBody.n_Nodes);
-
-      //kinematic equations --> modal
-      Real M_q[3] = Ct*r_0_dd + Cr*phi_dd + Me*q_dd;
-      Real k_omega_q[3] =  Ge*phi_d + Oe*OMega;
-      Real k_q[nq] = ksigma[:,1] + Ke*q +De*q_d;
-      Real q_comp[nq] = M_q + k_omega_q + k_q;
-      Real hde[nq] = phi*ModalBody.nodes[forceNode].f;
-
-      //node position
-
-      //disposition
-      Real u[3]= ModalBody.nBody.u_out[forceNode, :];//forceNode
-      //Real orig_M0[3,1] = ModalBody.nBody.modal.nodes[forceNode].origin;
-      //Real orig_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].origin;
-      //Real orig [3,1] = EMBSlib.SID.MatrixFunctions.getTaylorFunction(3,nq,1,orig_M0,zeros(3,nq,1),q);
-      //phi of force node
-      Real phi_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M0;
-      Real phi_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].phi.M1;
-      Real phi [3,3] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,3,phi_M0,phi_M1,q);
-      //psi of force node
-      Real psi_M0[3,3] = ModalBody.nBody.modal.nodes[forceNode].psi.M0;
-      Real psi_M1[3,nq,3] = ModalBody.nBody.modal.nodes[forceNode].psi.M1;
-      Real psi [3,3] = EMBSlib.MatrixFunctions.getTaylorFunction(3,nq,3,psi_M0,psi_M1,q);
-
-
-      Real uForceNode[3] = phi*q;
-
-      parameter Integer forceNode = 9;//5 works?!
-
-
-    Modelica.Mechanics.MultiBody.Forces.WorldTorque torque
-      annotation (Placement(transformation(extent={{68,-66},{88,-46}})));
-    Modelica.Blocks.Sources.RealExpression torqueIn[3](y={time,0,0})
-      annotation (Placement(transformation(extent={{32,-66},{52,-46}})));
-  algorithm
-
-  equation
-
-
-    connect(world.frame_b, ModalBody.frame_ref) annotation (Line(
-        points={{-92,20},{-20,20}},
-        color={95,95,95},
-        thickness=0.5));
-    connect(torque.frame_b, ModalBody.nodes[4]) annotation (Line(
-        points={{88,-56},{90,-56},{90,20},{40,20}},
-        color={95,95,95},
-        thickness=0.5));
-    connect(torqueIn.y, torque.torque)
-      annotation (Line(points={{53,-56},{66,-56}}, color={0,0,127}));
-    annotation (Diagram(coordinateSystem(preserveAspectRatio=true,  extent={{-100,
-              -100},{100,100}})),
-                         Documentation(info="<html>
-<p>
-The flexible structure of this academic example is a rectangular plate. Its displacement field is approximated with three eigenmodes in the frequency range below 3 Hz. Three corners of the plate are simply supported, free boundary conditions have been applied to the fourth corner. These properties are the result of the eigenvalue analysis, that have been performed with the finite element plate model in Ansys with the corresponding displacement constraints imposed. The origin of the reference frame coincides with one corner of the plate.
-</p>
- 
-<p>
-A force is applied at node 149 normal to the plate and exites the linear structure harmonically. The picture below shows the deformation field twice: the grey structure depicts the in scale displacments, the red wireframe exaggerates the elastic displacements by a factor of 30. Each clamped node that is specified is visualised  by a small, green coordinate system.
-</p>
-<br clear=\"all\">
-<div align=\"center\">
-<img
- align=\"bottom\" border=\"0\"
- src=\"modelica://FlexibleBodies/Resources/Images/Examples/PlateAnimation.png\" width=\"533\"
- ><br>
-Animation model SimplePlate
-</div>
-<p>
-The plot below shows the transient modal amplitudes of the three modes due to the force excitation.
-</p>
-
-<br clear=\"all\">
-<div align=\"center\">
-<img
- align=\"bottom\" border=\"0\"
- src=\"modelica://FlexibleBodies/Resources/Images/Examples/PlatePlot.png\"
- ><br>
-Results of the model SimplePlate
-</div>
-</html>",
-  revisions="<html>
-<table border=0 cellspacing=0 cellpadding=2>
-  <tr>
-    <td valign=\"center\"><img src=\"modelica://FlexibleBodies/Resources/Images/dlr_logo.png\"  width=60 ></td>
-    <td valign=\"center\">&nbsp;&nbsp;&nbsp;</td>
-    <td valign=\"center\"><b>Copyright</b>
-      <br><b>&copy; 1999-2012, DLR Institute of Robotics and Mechatronics</b>
-      <br><b>&copy; 2012-2019, DLR Institute of System Dynamics and Control</b></td>
-  </tr>
-</table>
-</html>"),   experiment(
-        StopTime=20,
-        Tolerance=1e-06,
-        __Dymola_Algorithm="Dassl"),
-      experimentSetupOutput,
-      Commands(file="modelica://FlexibleBodies/Resources/Scripts/Settings.mos"
-          "Settings",
-        file="modelica://FlexibleBodies/Resources/Scripts/SimulateandPlotSimplePlate.mos"
-          "Simulate and Plot Results",
-        file="modelica://FlexibleBodies/Resources/Scripts/PlotSimplePlate.mos"
-          "Plot Results"));
-  end SimplePlate2;
-  annotation (uses(Modelica(version="3.2.3"), FlexibleBodies(version="2.3.0")));
+  annotation (uses(Modelica(version="3.2.3")));
 end EMBSlib;
