@@ -26,7 +26,7 @@ typedef struct
 	double* M0;// zero order matrix, nrow X ncol
 	double* M1;// first order matrix, nrow X nq X ncol
 	double* Mn;// higher order matrix
-} taylor; // = class taylor
+} taylor;
 
 typedef struct
 {
