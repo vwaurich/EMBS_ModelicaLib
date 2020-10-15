@@ -263,9 +263,9 @@ BABCAC6CF30574747870B2387C0FCD7FEA67C1EE5FCF3BC2D70E9FC373B079E4650A369FA09FCEE1
   Modelica.SIunits.Torque t2[nr0]=cross(Modelica.Mechanics.MultiBody.Frames.resolve1(R_theta, origin+u),frame_b.f)
         "torque cause of force";
   //Modelica.SIunits.Force hde_i[nq]=transpose(phi)*f+transpose(psi)*t;
-  Modelica.SIunits.Force hde_i[nq]=transpose(phi)*f+transpose(psi)*t;//
-   Modelica.SIunits.Force hdef_i[nq]=transpose(phi)*f;//
-   Modelica.SIunits.Force hdet_i[nq]=transpose(psi)*t;//
+   Real hde_i[nq]=transpose(phi)*f+transpose(psi)*t;//
+   Real hdef_i[nq]=transpose(phi)*f;//
+   Real hdet_i[nq]=transpose(psi)*t;//
   parameter Modelica.SIunits.Diameter sphereDiameter=world.defaultBodyDiameter
         "Diameter of sphere"                                                                        annotation(Dialog(
    group="if animation = true",
