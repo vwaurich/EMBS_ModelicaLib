@@ -457,7 +457,7 @@ void* SIDFileConstructor_C(const char* fileName)
 			//skip the rest of the first line
 			fgets(line, bufferSize, sidFile); 
 		}
-		else if (strstr(line, "refmod")) {
+		if (strstr(line, "refmod")) {
 			parseRefMod(line, bufferSize, sidFile, sid);
 		}
 		else if (strstr(line, "frame")) {
