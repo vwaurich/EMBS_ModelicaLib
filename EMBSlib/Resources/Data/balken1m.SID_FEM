@@ -1,0 +1,295 @@
+    3   1    :No. nodes, No. modes:File created using PY_SID! No geometrical Stiffness included! Linearized deformations only! Dampingparameter set to beta:0.0 and alpha:0.0. Koerperkoordinatensystem: Tangentensystem 
+ part 
+      new modal                                 =
+           refmod 
+                mass                            = 7.84999999999D-01
+                nelastq                         =     1
+                ielastq (   1)                  = Eigen Mode    1 :        8.360 Hz
+           end refmod 
+           frame 
+                new node                        =    6022
+                     rframe                     =    body ref
+                     origin
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 1.00500000000D+00
+                          m0( 2, 1)             =-5.00000000000D-03
+                          m1( 1, 1, 1)          =-1.29593608542D-08
+                          m1( 2, 1, 1)          =-1.67898308819D+00
+                          m1( 3, 1, 1)          =-1.53241416944D+00
+                     end origin
+                     phi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-1.29593608542D-08
+                          m0( 2, 1)             =-1.67898308819D+00
+                          m0( 3, 1)             =-1.53241416944D+00
+                     end phi
+                     psi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 6.72124017666D-07
+                          m0( 2, 1)             = 2.09544720519D+00
+                          m0( 3, 1)             =-2.29586762751D+00
+                     end psi
+                     AP
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 1.00000000000D+00
+                          m0( 2, 2)             = 1.00000000000D+00
+                          m0( 3, 3)             = 1.00000000000D+00
+                          m1( 2, 1, 1)          =-2.29586762751D+00
+                          m1( 3, 1, 1)          =-2.09544720519D+00
+                          m1( 1, 1, 2)          = 2.29586762751D+00
+                          m1( 3, 1, 2)          = 6.72124017666D-07
+                          m1( 1, 1, 3)          = 2.09544720519D+00
+                          m1( 2, 1, 3)          =-6.72124017666D-07
+                     end AP
+                end node
+                new node                        =    6023
+                     rframe                     =    body ref
+                     origin
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 5.00000000000D-03
+                          m0( 2, 1)             =-5.00000000000D-03
+                          m0( 3, 1)             =-8.67361738000D-19
+                          m1( 1, 1, 1)          =-9.47207436123D-04
+                          m1( 2, 1, 1)          =-1.47678338141D-02
+                          m1( 3, 1, 1)          =-7.79787262596D-05
+                     end origin
+                     phi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-9.47207436123D-04
+                          m0( 2, 1)             =-1.47678338141D-02
+                          m0( 3, 1)             =-7.79787262596D-05
+                     end phi
+                     psi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    0
+                     end psi
+                     AP
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    4
+                     end AP
+                end node
+                new node                        =    6024
+                     rframe                     =    body ref
+                     origin
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 5.00000000000D-03
+                          m0( 2, 1)             =-1.00000000000D-02
+                          m0( 3, 1)             =-8.67361738000D-19
+                          m1( 1, 1, 1)          =-1.37086370210D-03
+                          m1( 2, 1, 1)          =-1.41153599064D-05
+                          m1( 3, 1, 1)          =-2.70129108214D-04
+                     end origin
+                     phi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-1.37086370210D-03
+                          m0( 2, 1)             =-1.41153599064D-05
+                          m0( 3, 1)             =-2.70129108214D-04
+                     end phi
+                     psi
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    0
+                     end psi
+                     AP
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    4
+                     end AP
+                end node
+           end frame 
+           mdCM
+                          order                 =    1
+                          nrow                  =    3
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 3.92500000000D-01
+                          m0( 2, 1)             =-3.92500000000D-03
+                          m0( 3, 1)             = 5.52977233231D-19
+                          m1( 1, 1, 1)          =-4.59368629168D-01
+                          m1( 2, 1, 1)          =-1.01070206241D+00
+                          m1( 3, 1, 1)          =-7.03502256492D-01
+           end mdCM
+           J
+                          order                 =    1
+                          nrow                  =    6
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 3.68198993747D-05
+                          m0( 2, 1)             = 2.61677319900D-01
+                          m0( 3, 1)             = 2.61696944900D-01
+                          m0( 4, 1)             = 1.96250000000D-03
+                          m0( 5, 1)             =-2.71050543121D-20
+                          m0( 6, 1)             =-1.29122893620D-21
+                          m1( 1, 1, 1)          = 9.11449957951D-03
+                          m1( 2, 1, 1)          =-2.53047545451D-03
+                          m1( 3, 1, 1)          = 2.34913333493D-03
+                          m1( 4, 1, 1)          = 3.70698906251D-01
+                          m1( 5, 1, 1)          = 3.36710286910D-01
+                          m1( 6, 1, 1)          =-5.05468542992D-03
+           end J
+           Ct
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-4.59368629168D-01
+                          m0( 1, 2)             =-1.01070206241D+00
+                          m0( 1, 3)             =-7.03502256492D-01
+           end Ct
+           Cr
+                          order                 =    1
+                          nrow                  =    1
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 5.10768749086D-03
+                          m0( 1, 2)             = 3.15465078814D-01
+                          m0( 1, 3)             =-3.51239458354D-01
+                          m1( 1, 1, 1)          =-1.03636118914D-17
+                          m1( 1, 1, 2)          = 7.45388993584D-20
+                          m1( 1, 1, 3)          =-1.29620466669D-18
+           end Cr
+           Me
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    4
+           end Me
+           Gr
+                          order                 =    0
+                          nrow                  =    3
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             = 9.11449957951D-03
+                          m0( 1, 2)             = 4.98779191421D-02
+                          m0( 1, 3)             = 4.95400867517D-02
+                          m0( 2, 1)             = 6.91519893360D-01
+                          m0( 2, 2)             =-2.53047545451D-03
+                          m0( 2, 3)             =-3.00222297361D-03
+                          m0( 3, 1)             = 6.23880487069D-01
+                          m0( 3, 2)             =-7.10714788624D-03
+                          m0( 3, 3)             = 2.34913333493D-03
+           end Gr
+           Ge
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    3
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-2.07272237828D-17
+                          m0( 1, 2)             = 1.49077798717D-19
+                          m0( 1, 3)             =-2.59240933337D-18
+           end Ge
+           Oe
+                          order                 =    1
+                          nrow                  =    1
+                          ncol                  =    6
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    3
+                          m0( 1, 1)             =-4.55724978975D-03
+                          m0( 1, 2)             = 1.26523772726D-03
+                          m0( 1, 3)             =-1.17456666746D-03
+                          m0( 1, 4)             =-3.70698906251D-01
+                          m0( 1, 5)             = 5.05468542992D-03
+                          m0( 1, 6)             =-3.36710286910D-01
+                          m1( 1, 1, 1)          =-9.93602285644D-01
+                          m1( 1, 1, 2)          =-6.14726730635D-01
+                          m1( 1, 1, 3)          =-7.38148608756D-01
+                          m1( 1, 1, 4)          = 7.02548793311D-04
+                          m1( 1, 1, 5)          = 1.34692009319D+00
+                          m1( 1, 1, 6)          = 1.64221955249D-02
+           end Oe
+           ksigma
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    0
+           end ksigma
+           Ke
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    1
+                          m0( 1, 1)             = 2.75894190618D+03
+           end Ke
+           De
+                          order                 =    0
+                          nrow                  =    1
+                          ncol                  =    1
+                          nq                    =    1
+                          nqn                   =    0
+                          structure             =    0
+           end De
+      end modal 
+ end part 
