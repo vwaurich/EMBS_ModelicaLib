@@ -5,14 +5,14 @@ model EMBS_bodyExample
     numNodes=6,
     numModes=11,
     SIDfileName=Modelica.Utilities.Files.loadResource(
-        "modelica://EMBSlib/Resources/Data/beam.SID_FEM"))    annotation(Placement(transformation(extent={{0,0},{
-            20,20}})));
+        "modelica://EMBSlib/Resources/Data/beam.SID_FEM"))    annotation(Placement(transformation(extent={{-36,-12},
+            {20,32}})));
 inner Modelica.Mechanics.MultiBody.World world(
     label2="y",
  g=9.81,
     n(displayUnit="1") = {0,-1,0})
-                              annotation(Placement(transformation(extent={{-40,0},
-            {-20,20}})));
+                              annotation(Placement(transformation(extent={{-70,0},
+            {-50,20}})));
   Modelica.Mechanics.MultiBody.Forces.WorldForce force annotation (Placement(
         transformation(
         extent={{-10,-10},{10,10}},
@@ -24,11 +24,11 @@ inner Modelica.Mechanics.MultiBody.World world(
     annotation (Placement(transformation(extent={{20,40},{40,60}})));
 equation
   connect(eMBS_Body.frame_ref, world.frame_b) annotation (Line(
-      points={{0,10},{-20,10}},
+      points={{-31.3333,10},{-50,10}},
       color={95,95,95},
       thickness=0.5));
   connect(force.frame_b, eMBS_Body.frame_node[3]) annotation (Line(
-      points={{50,20},{50,10},{36,10},{36,9.73333},{20,9.73333}},
+      points={{50,20},{50,10},{36,10},{36,9.41333},{15.3333,9.41333}},
       color={95,95,95},
       thickness=0.5));
   connect(zero.y, force.force[1]) annotation (Line(points={{41,70},{60,70},{60,

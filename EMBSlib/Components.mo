@@ -108,15 +108,16 @@ package Components
    parameter Real Ke[nq,nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "Ke", nq, nq) annotation(Evaluate=true);
    parameter Real De[nq,nq]=EMBSlib.ExternalFunctions_C.getM0( sid, "De", nq, nq) annotation(Evaluate=true);
    parameter Integer nq=numModes;
-   outer Modelica.Mechanics.MultiBody.World world annotation(Placement(transformation(extent={{-100,
-              -100},{-80,-80}})));
+   outer Modelica.Mechanics.MultiBody.World world annotation(Placement(transformation(extent={{-90,-90},
+              {-70,-70}})));
   public
    Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame[numNodes](each
-       length=coordinateSystemScalingFactor)                                                 annotation(Placement(transformation(extent={{60,60},{80,80}})));
+       length=coordinateSystemScalingFactor)                                                 annotation(Placement(transformation(extent={{36,30},
+              {56,50}})));
   public
    Modelica.Mechanics.MultiBody.Visualizers.FixedFrame fixedFrame1[numNodes](
           each length=0.2)
-        annotation (Placement(transformation(extent={{-20,-40},{0,-20}})));
+        annotation (Placement(transformation(extent={{8,-42},{28,-22}})));
  //initial algorithm
  //  for i in 1:nq loop
  //    q[i] :=0.0;
@@ -153,12 +154,12 @@ package Components
     points={{-79,60},{-72,60}},
     color={0,0,127}));
    connect(fixedFrame.frame_a, nodes.frame_b) annotation (Line(
-       points={{60,70},{26,70},{26,0},{12,0},{12,-0.8}},
+       points={{36,40},{12,40},{12,-0.8}},
        color={95,95,95},
        thickness=0.5,
        smooth=Smooth.None));
       connect(fixedFrame1.frame_a, nodes.frame_a) annotation (Line(
-          points={{-20,-30},{-26,-30},{-26,0},{-8,0},{-8,-1}},
+          points={{8,-32},{-8,-32},{-8,-1}},
           color={95,95,95},
           thickness=0.5,
           smooth=Smooth.None));
@@ -167,15 +168,20 @@ package Components
           color={95,95,95},
           thickness=0.5,
           smooth=Smooth.None));
+    connect(frame_ref, frame_ref) annotation (Line(
+        points={{-100,0},{-100,0}},
+        color={95,95,95},
+        thickness=0.5));
   annotation (
-   Diagram(coordinateSystem(preserveAspectRatio=false, extent={{-100,-100},{100,100}}),
-                        graphics),
+   Diagram(coordinateSystem(preserveAspectRatio=false, extent={{-120,-100},{120,
+              100}})),
    experiment(
     StopTime=1,
     StartTime=0,
     Interval=0.002,
     Algorithm="Dassl"),
-      Icon(graphics={
+      Icon(coordinateSystem(extent={{-120,-100},{120,100}}),
+           graphics={
           Line(points={{-98,0},{-60,40},{2,60},{60,42},{100,0},{60,-40},{0,-60},
                 {-60,-40},{-102,0},{-60,20},{-60,40},{-20,20},{0,40},{-60,40}},
               color={28,108,200}),
